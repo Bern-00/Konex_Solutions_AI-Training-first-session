@@ -132,7 +132,7 @@ export async function getAllStudentsProgress() {
         completed_at
       )
     `)
-    .eq('is_admin', false) // Uniquement les étudiants
+    .neq('is_admin', true) // Filtre uniquement ceux qui sont explicitement admin
 
   if (error) throw error
   return data

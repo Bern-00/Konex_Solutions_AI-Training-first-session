@@ -32,7 +32,12 @@ export default function AdminDashboard() {
         setIsLoading(true);
         try {
             const data = await getAllStudentsProgress();
-            setStudents(data as any);
+            console.log('Admin Dashboard Data Fetched:', data);
+            if (data && data.length > 0) {
+                setStudents(data as any);
+            } else {
+                console.warn('No students found in the database or filtered out.');
+            }
         } catch (error) {
             console.error('Error fetching admin data:', error);
         } finally {
@@ -152,6 +157,14 @@ export default function AdminDashboard() {
                                         </td>
                                     </tr>
                                 ))}
+                                {filteredStudents.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-10 text-center text-neon/40 italic">
+                                            AUCUN ETUDIANT DETECTE DANS LA BASE DE DONNEES.
+                                            VERIFIEZ LES POLITIQUES RLS ET LES ROLES DANS SUPABASE.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
