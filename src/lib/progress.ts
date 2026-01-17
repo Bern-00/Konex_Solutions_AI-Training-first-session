@@ -132,10 +132,17 @@ export async function getAllStudentsProgress() {
         completed_at
       )
     `)
-    .neq('is_admin', true) // Filtre uniquement ceux qui sont explicitement admin
 
   if (error) throw error
-  return data
+
+  // Filtrer en JavaScript pour éviter les problèmes de NULL dans PostgreSQL
+  // On garde tout le monde SAUF l'admin spécifié par son email ou par son flag
+  const studentsOnly = data?.filter(profile =>
+    profile.email?.toLowerCase() !== 'waddlybernlouisjean@gmail.com' &&
+    (profile as any).is_admin !== true
+  ) || []
+
+  return studentsOnly
 }
 
 export async function resetStudentAttempts(userId: string, chapterId: number) {
