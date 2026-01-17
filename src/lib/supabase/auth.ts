@@ -13,10 +13,7 @@ export async function signUp(email: string, password: string, fullName: string) 
     }
   })
 
-  if (error) throw error
-
-  // Créer le profil après inscription
-  if (data.user) {
+  if (!error && data.user) {
     await supabase.from('profiles').insert({
       id: data.user.id,
       email: data.user.email,
@@ -25,7 +22,7 @@ export async function signUp(email: string, password: string, fullName: string) 
     })
   }
 
-  return data
+  return { data, error }
 }
 
 export async function signIn(email: string, password: string) {

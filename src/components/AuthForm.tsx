@@ -27,7 +27,7 @@ export default function AuthForm() {
         window.location.reload();
       } else {
         const { error } = await signUp(email, password, fullName)
-        if (error) throw error
+        if (error) throw (error as any)
         setSuccess(true)
       }
     } catch (err: any) {
