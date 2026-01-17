@@ -8,6 +8,7 @@ import AnnotationTask from '@/components/AnnotationTask';
 import ComponentModuleContent from '@/components/ModuleContent'; // Renamed to avoid confusion with internal types elsewhere
 import ChapterView from '@/components/ChapterView';
 import AdminDashboard from '@/components/AdminDashboard';
+import FeedbackSystem from '@/components/FeedbackSystem';
 import { getCurrentUser, signOut, getUserProfile } from '@/lib/supabase/auth';
 import { getUserProgress } from '@/lib/progress';
 import { createClient } from '@/lib/supabase/client'; // ADDED
@@ -352,6 +353,11 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Messaging System for Students */}
+      {user && activeView !== 'admin' && (
+        <FeedbackSystem userFullName={user.full_name || 'Étudiant'} />
+      )}
     </main>
   );
 }
