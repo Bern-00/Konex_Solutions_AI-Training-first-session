@@ -1,26 +1,79 @@
 @import "tailwindcss";
 
+/* Cyberpunk Dark Mode (Default) */
 :root {
+  --background: #050505;
+  --foreground: #ffffff;
+  --neon: #22c55e;
+  --card-bg: rgba(34, 197, 94, 0.05);
+  --card-border: rgba(34, 197, 148, 0.2);
+  --grid-opacity: 0.05;
+  --border-soft: rgba(255, 255, 255, 0.1);
+  --muted: #888888;
+  --soft: #cccccc;
+}
+
+/* Laboratory Light Mode Override */
+.light {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
+  --neon: #16a34a;
+  --card-bg: #ffffff;
+  --card-border: rgba(0, 0, 0, 0.1);
+  --grid-opacity: 0.08;
+  --border-soft: rgba(0, 0, 0, 0.1);
+  --muted: #666666;
+  --soft: #333333;
+}
+
+/* Explicit .dark class if needed */
+.dark {
+  --background: #050505;
+  --foreground: #ffffff;
+  --neon: #22c55e;
+  --card-bg: rgba(34, 197, 94, 0.05);
+  --card-border: rgba(34, 197, 148, 0.2);
+  --grid-opacity: 0.05;
+  --border-soft: rgba(255, 255, 255, 0.1);
+  --muted: #888888;
+  --soft: #cccccc;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-neon: var(--neon);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-border-soft: var(--border-soft);
+  --color-muted: var(--muted);
+  --color-soft: var(--soft);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --animate-scan: scan 3s linear infinite;
+
+  @keyframes scan {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+
+    100% {
+      transform: translateY(400%);
+      opacity: 0;
+    }
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+.neon-glow {
+  text-shadow: 0 0 10px var(--neon);
 }
