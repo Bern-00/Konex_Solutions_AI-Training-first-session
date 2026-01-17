@@ -116,33 +116,31 @@ export async function submitQuizAttempt(
 export async function getAllStudentsProgress() {
   const supabase = createClient()
 
-  // Récupérer tous les profils avec leur progression jointe
-  const { data, error } = await supabase
+  // 1. Récupérer TOUS les profils
+  const { data: profiles, error: pError } = await supabase
     .from('profiles')
-    .select(`
-      id,
-      email,
-      full_name,
-      user_progress (
-        module_id,
-        chapter_id,
-        completed,
-        score,
-        attempts,
-        completed_at
-      )
-    `)
+    .select('*')
 
-  if (error) throw error
+  if (pError) throw pError
 
-  // Filtrer en JavaScript pour éviter les problèmes de NULL dans PostgreSQL
-  // On garde tout le monde SAUF l'admin spécifié par son email ou par son flag
-  const studentsOnly = data?.filter(profile =>
-    profile.email?.toLowerCase() !== 'waddlybernlouisjean@gmail.com' &&
-    (profile as any).is_admin !== true
-  ) || []
+  // 2. Récupérer TOUTE la progression
+  const { data: progress, error: prError } = await supabase
+    .from('user_progress')
+    .select('*')
 
-  return studentsOnly
+  if (prError) throw prError
+
+  // 3. Assembler en JavaScript pour une fiabilité totale
+  const adminEmail = 'waddlybernlouisjean@gmail.com'.toLowerCase()
+
+  const studentData = profiles
+    .filter(p => p.email?.toLowerCase() !== adminEmail && p.is_admin !== true)
+    .map(profile => ({
+      ...profile,
+      user_progress: progress.filter(pr => pr.user_id === profile.id)
+    }))
+
+  return studentData
 }
 
 export async function resetStudentAttempts(userId: string, chapterId: number) {
