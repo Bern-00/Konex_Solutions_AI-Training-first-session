@@ -76,7 +76,7 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
         try {
             setSaveStatus('Saving...');
             console.log(`PromptEngineeringModule: Saving progress - Step ${currentStep === 5 ? currentStep : nextStep}, Responses:`, responses);
-            const result = await saveActivityProgress(userId, 3, 11, currentStep === 5 ? currentStep : nextStep, responses);
+            const result = await saveActivityProgress(userId, 2, 11, currentStep === 5 ? currentStep : nextStep, responses);
             console.log("PromptEngineeringModule: Save result:", result);
             setSaveStatus('Saved');
             setLastSaveTime(new Date().toLocaleTimeString());
@@ -94,7 +94,7 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
             await supabase.from('user_progress').upsert({
                 user_id: userId,
                 chapter_id: 11,
-                module_id: 3,
+                module_id: 2,
                 completed: true,
                 completed_at: new Date().toISOString()
             }, { onConflict: 'user_id,chapter_id' });
@@ -150,8 +150,8 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
                 {/* DEBUG STATUS INDICATOR */}
                 <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none">
                     <div className={`text-[10px] font-mono px-2 py-1 rounded border ${saveStatus === 'Saved' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
-                            saveStatus.includes('Error') ? 'bg-red-500/20 text-red-500 border-red-500/30' :
-                                'bg-neon/10 text-neon border-neon/20'
+                        saveStatus.includes('Error') ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                            'bg-neon/10 text-neon border-neon/20'
                         }`}>
                         STATUS: {saveStatus.toUpperCase()}
                         {lastSaveTime && <span className="opacity-50 ml-2">({lastSaveTime})</span>}
