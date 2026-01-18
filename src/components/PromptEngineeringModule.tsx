@@ -19,7 +19,22 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
         activity3_1: '',
         activity3_2: '',
         activity4_1: '',
+        activity4_1: '',
         activity4_2: '',
+        quiz: {
+            part1_A: '',
+            part1_B: '',
+            part2_q1: '',
+            part2_q2: '',
+            part2_q3: '',
+            part2_q4: '',
+            part2_q5: '',
+            part3_p1: '',
+            part3_p2: '',
+            part3_p3: '',
+            status: 'pending', // pending, submitted, passed, failed
+            submittedAt: null as string | null
+        }
     });
     const [activity2Validated, setActivity2Validated] = useState(false);
     const [showActivity4Note, setShowActivity4Note] = useState(false);
@@ -352,27 +367,276 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
                 )}
 
                 {currentStep === 5 && (
-                    <div className="space-y-10 py-10 text-center">
-                        <div className="p-10 border border-neon/30 bg-neon/5 inline-block mx-auto">
-                            <h3 className="text-4xl font-black uppercase italic text-neon mb-4 tracking-tighter">
-                                PROMPT_MASTER_CHALLENGE
-                            </h3>
-                            <p className="text-foreground/60 text-sm mb-10 max-w-sm mx-auto">
-                                Vous avez complété les 4 activités pratiques. Il est temps de valider vos connaissances théoriques.
-                            </p>
-
-                            <div className="flex flex-col gap-4 items-center">
-                                <div className="text-xs text-neon/40 font-mono animate-pulse">
-                                    {"//"} ATTENTE_DU_CONTENU_QUIZZ_SYSTEM
-                                </div>
+                    <div className="space-y-10 py-10">
+                        {/* VIEW: RESULTAT DU QUIZ (SI CORRIGÉ) */}
+                        {responses.quiz?.status === 'passed' && (
+                            <div className="p-10 border border-green-500/30 bg-green-500/5 text-center animate-in zoom-in duration-500">
+                                <h3 className="text-4xl font-black uppercase italic text-green-500 mb-4 tracking-tighter">
+                                    CONGRATULATIONS_AGENT
+                                </h3>
+                                <p className="text-foreground/80 text-sm mb-8 max-w-lg mx-auto">
+                                    L'administrateur a validé votre examen final. Vous avez démontré une maîtrise exceptionnelle du Prompt Engineering.
+                                </p>
+                                <div className="text-6xl mb-8">🎓</div>
                                 <button
                                     onClick={onComplete}
-                                    className="bg-neon text-background px-12 py-4 font-black uppercase text-xs tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)]"
+                                    className="bg-green-500 text-background px-12 py-4 font-black uppercase text-xs tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)]"
                                 >
-                                    Lancer le Quizz
+                                    Retourner au Dashboard
                                 </button>
                             </div>
-                        </div>
+                        )}
+
+                        {responses.quiz?.status === 'failed' && (
+                            <div className="p-10 border border-red-500/30 bg-red-500/5 text-center animate-in zoom-in duration-500">
+                                <h3 className="text-4xl font-black uppercase italic text-red-500 mb-4 tracking-tighter">
+                                    MISSION_FAILED
+                                </h3>
+                                <p className="text-foreground/80 text-sm mb-8 max-w-lg mx-auto">
+                                    "Oops, nice try il va falloir faire plus d'effort..."
+                                </p>
+                                <div className="text-left max-w-2xl mx-auto bg-black/40 p-6 border border-white/5 mb-8 text-xs space-y-4">
+                                    <h4 className="text-neon font-bold uppercase border-b border-white/10 pb-2 mb-4">CORRECTIF & EXPLICATION</h4>
+
+                                    <div className="space-y-2">
+                                        <p className="font-bold text-red-400">Q1 : C</p>
+                                        <p className="text-foreground/60">Le rôle imposé (System Prompt) influence directement le ton, le vocabulaire et la posture.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-bold text-red-400">Q2 : C</p>
+                                        <p className="text-foreground/60">Le Chain-of-Thought externalise les étapes intermédiaires du raisonnement.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-bold text-red-400">Q3 : B</p>
+                                        <p className="text-foreground/60">Le prompt injection vise à faire ignorer ou contourner les règles initiales.</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="font-bold text-red-400">Questions Ouvertes</p>
+                                        <p className="text-foreground/60">Pour Q4, il fallait mentionner l'importance du contexte et des contraintes. Pour Q5, l'hallucination vient souvent d'un manque de contexte, pas juste de l'entraînement.</p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        // Reset quiz status to retry? Or just locked fail? 
+                                        // User implied they can just see the result. "il verra vous avez reussi ... ou fail"
+                                        // "les explications seront envoyer seulemtn a ceu qui ont fail"
+                                        // Let's allow them to just go back.
+                                        onBack();
+                                    }}
+                                    className="bg-red-500/10 text-red-500 border border-red-500/50 px-12 py-4 font-black uppercase text-xs tracking-[0.3em] hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
+                        )}
+
+                        {responses.quiz?.status === 'submitted' && (
+                            <div className="p-10 border border-neon/30 bg-neon/5 text-center">
+                                <h3 className="text-3xl font-black uppercase italic text-neon mb-4 tracking-tighter">
+                                    STATUS: PENDING_REVIEW
+                                </h3>
+                                <p className="text-foreground/60 text-sm mb-6 max-w-sm mx-auto">
+                                    Vos réponses ont été transmises au QG. L'administrateur est en train d'analyser vos performances.
+                                </p>
+                                <div className="w-16 h-16 border-4 border-neon/30 border-t-neon rounded-full animate-spin mx-auto mb-8" />
+                                <p className="text-xs font-mono opacity-40">Veuillez revenir consulter cette page plus tard.</p>
+                                <button onClick={onBack} className="mt-8 text-neon text-xs hover:underline">Retour au Dashboard</button>
+                            </div>
+                        )}
+
+                        {/* UTILS POUR LE FORMULAIRE */}
+                        {(!responses.quiz?.status || responses.quiz?.status === 'pending') && (
+                            <div className="max-w-3xl mx-auto text-left space-y-12">
+                                <div className="text-center mb-10">
+                                    <h3 className="text-4xl font-black uppercase italic text-neon tracking-tighter">FINAL_ASSESSMENT</h3>
+                                    <p className="text-foreground/50 text-xs font-mono mt-2">MODULE 2: PROMPT ENGINEERING MASTERY</p>
+                                </div>
+
+                                {/* PARTIE 1 */}
+                                <div className="space-y-6">
+                                    <div className="border-l-4 border-neon pl-4">
+                                        <h4 className="text-xl font-black uppercase italic text-foreground">PARTIE 1 – Prompts Volontairement Confus</h4>
+                                        <p className="text-xs text-foreground/60 mt-1">Analysez la catégorie réelle du prompt.</p>
+                                    </div>
+
+                                    <div className="bg-card-bg border border-neon/10 p-6 space-y-4">
+                                        <label className="text-xs font-bold text-neon uppercase">Prompt A : Extraction vs Résumé</label>
+                                        <p className="text-xs italic text-foreground/70 p-4 bg-black/20 border-l-2 border-neon/50">
+                                            "À partir du texte ci-dessous sur la crise énergétique européenne, identifie les trois pays mentionnés, puis explique brièvement leur rôle respectif dans la situation décrite."
+                                        </p>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] uppercase font-bold text-foreground">Votre Analyse (Type de tâche & Pourquoi) :</p>
+                                            <textarea
+                                                className="w-full h-24 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                                placeholder="Expliquez pourquoi ce n'est PAS un simple résumé..."
+                                                value={responses.quiz?.part1_A || ''}
+                                                onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part1_A: e.target.value, status: 'pending' } })}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-card-bg border border-neon/10 p-6 space-y-4">
+                                        <label className="text-xs font-bold text-neon uppercase">Prompt B : Classification vs Sentiment</label>
+                                        <p className="text-xs italic text-foreground/70 p-4 bg-black/20 border-l-2 border-neon/50">
+                                            "Lis le passage suivant et indique si le ton général est alarmiste, neutre ou optimiste, en citant une phrase précise du texte pour justifier ton choix."
+                                        </p>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] uppercase font-bold text-foreground">Votre Analyse :</p>
+                                            <textarea
+                                                className="w-full h-24 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                                placeholder="Expliquez la nuance..."
+                                                value={responses.quiz?.part1_B || ''}
+                                                onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part1_B: e.target.value, status: 'pending' } })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* PARTIE 2 */}
+                                <div className="space-y-6">
+                                    <div className="border-l-4 border-neon pl-4">
+                                        <h4 className="text-xl font-black uppercase italic text-foreground">PARTIE 2 – Compréhension (QCM & Ouvertes)</h4>
+                                    </div>
+
+                                    {/* Q1 */}
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold">Q1. "Agis comme un professeur strict..." Quel élément influence le style ?</p>
+                                        <select
+                                            className="w-full bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none cursor-pointer"
+                                            value={responses.quiz?.part2_q1 || ''}
+                                            onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part2_q1: e.target.value, status: 'pending' } })}
+                                        >
+                                            <option value="">Sélectionner une réponse</option>
+                                            <option value="A">A. L’input data</option>
+                                            <option value="B">B. Le format de sortie</option>
+                                            <option value="C">C. Le System Prompt implicite</option>
+                                            <option value="D">D. La température uniquement</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Q2 */}
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold">Q2. Pourquoi le Chain-of-Thought améliore la fiabilité ?</p>
+                                        <select
+                                            className="w-full bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none cursor-pointer"
+                                            value={responses.quiz?.part2_q2 || ''}
+                                            onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part2_q2: e.target.value, status: 'pending' } })}
+                                        >
+                                            <option value="">Sélectionner une réponse</option>
+                                            <option value="A">A. Augmente les tokens</option>
+                                            <option value="B">B. Révèle les poids internes</option>
+                                            <option value="C">C. Externalise les étapes du raisonnement</option>
+                                            <option value="D">D. Empêche l'hallucination</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Q3 */}
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold">Q3. Quel risque est lié au prompt injection ?</p>
+                                        <select
+                                            className="w-full bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none cursor-pointer"
+                                            value={responses.quiz?.part2_q3 || ''}
+                                            onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part2_q3: e.target.value, status: 'pending' } })}
+                                        >
+                                            <option value="">Sélectionner une réponse</option>
+                                            <option value="A">A. Perte de créativité</option>
+                                            <option value="B">B. Contournement des règles du System Prompt</option>
+                                            <option value="C">C. Coût en tokens</option>
+                                            <option value="D">D. Baisse de performance</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Q4 */}
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold">Q4. Pourquoi deux prompts identiques peuvent donner des réponses différentes ?</p>
+                                        <textarea
+                                            className="w-full h-20 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                            value={responses.quiz?.part2_q4 || ''}
+                                            onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part2_q4: e.target.value, status: 'pending' } })}
+                                        />
+                                    </div>
+
+                                    {/* Q5 */}
+                                    <div className="space-y-2">
+                                        <p className="text-xs font-bold">Q5. "Si le modèle hallucine, c’est qu’il est mal entraîné." Pourquoi est-ce incomplet ?</p>
+                                        <textarea
+                                            className="w-full h-20 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                            value={responses.quiz?.part2_q5 || ''}
+                                            onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part2_q5: e.target.value, status: 'pending' } })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* PARTIE 3 */}
+                                <div className="space-y-6">
+                                    <div className="border-l-4 border-neon pl-4">
+                                        <h4 className="text-xl font-black uppercase italic text-foreground">PARTIE 3 – Production de Prompts</h4>
+                                        <p className="text-xs text-foreground/60 mt-1">Rédigez 3 prompts avec 3 à 5 contraintes explicites chacun.</p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-neon uppercase">Prompt 1 : Brainstorming</label>
+                                            <p className="text-[10px] opacity-60">Requis: Rôle explicite, Limite quantitative, Angle/Critère.</p>
+                                            <textarea
+                                                className="w-full h-24 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                                value={responses.quiz?.part3_p1 || ''}
+                                                onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part3_p1: e.target.value, status: 'pending' } })}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-neon uppercase">Prompt 2 : Creative Writing</label>
+                                            <p className="text-[10px] opacity-60">Requis: Style/Tonalité, Contrainte narrative, Limite de longueur.</p>
+                                            <textarea
+                                                className="w-full h-24 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                                value={responses.quiz?.part3_p2 || ''}
+                                                onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part3_p2: e.target.value, status: 'pending' } })}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-neon uppercase">Prompt 3 : Open Question</label>
+                                            <p className="text-[10px] opacity-60">Requis: Pas de sources externes, Raisonnement structuré, Position nuancée.</p>
+                                            <textarea
+                                                className="w-full h-24 bg-background border border-foreground/10 p-3 text-xs text-foreground focus:border-neon outline-none"
+                                                value={responses.quiz?.part3_p3 || ''}
+                                                onChange={(e) => setResponses({ ...responses, quiz: { ...responses.quiz, part3_p3: e.target.value, status: 'pending' } })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="pt-10 flex justify-center">
+                                    <button
+                                        onClick={async () => {
+                                            if (confirm("Êtes-vous sûr de vouloir soumettre votre examen final ? Vous ne pourrez plus le modifier.")) {
+                                                const finalResponses = {
+                                                    ...responses,
+                                                    quiz: {
+                                                        ...responses.quiz,
+                                                        status: 'submitted',
+                                                        submittedAt: new Date().toISOString()
+                                                    }
+                                                };
+                                                setResponses(finalResponses); // UI optimistic update
+                                                try {
+                                                    await saveActivityProgress(userId, 2, 11, 5, finalResponses);
+                                                    setSaveStatus('Quiz Submitted');
+                                                } catch (e) {
+                                                    alert("Erreur lors de la soumission. Veuillez réessayer.");
+                                                    console.error(e);
+                                                }
+                                            }
+                                        }}
+                                        className="bg-neon text-background px-16 py-4 font-black uppercase text-sm tracking-widest hover:scale-105 transition-all shadow-[0_0_40px_rgba(34,197,94,0.4)]"
+                                    >
+                                        Soumettre l'Examen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

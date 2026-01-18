@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Clock } from 'lucide-react';
-import { getAllStudentsProgress, resetStudentAttempts } from '@/lib/progress';
+import { getAllStudentsProgress, resetStudentAttempts, saveActivityProgress } from '@/lib/progress';
 import { getMessages, markMessageAsRead } from '@/lib/messages';
 
 interface StudentProgress {
@@ -26,6 +26,20 @@ interface StudentProgress {
             activity3_2: string;
             activity4_1: string;
             activity4_2: string;
+            quiz?: {
+                part1_A: string;
+                part1_B: string;
+                part2_q1: string;
+                part2_q2: string;
+                part2_q3: string;
+                part2_q4: string;
+                part2_q5: string;
+                part3_p1: string;
+                part3_p2: string;
+                part3_p3: string;
+                status: 'pending' | 'submitted' | 'passed' | 'failed';
+                submittedAt: string | null;
+            };
         };
     } | null;
 }
@@ -83,6 +97,34 @@ export default function AdminDashboard() {
             fetchData();
         } catch (error) {
             alert('Erreur lors de la réinitialisation.');
+        }
+    }
+
+    async function handleGradeQuiz(userId: string, status: 'passed' | 'failed') {
+        if (!selectedStudent || !selectedStudent.activity_metadata) return;
+
+        try {
+            const updatedResponses = {
+                ...selectedStudent.activity_metadata.responses,
+                quiz: {
+                    ...selectedStudent.activity_metadata.responses.quiz,
+                    status: status
+                }
+            };
+
+            // Module 2 = ID 2, Chapter 11
+            await saveActivityProgress(userId, 2, 11, selectedStudent.activity_metadata.step, updatedResponses);
+
+            // Si passed, on marque aussi le module comme complété au niveau user_progress si ce n'est pas fait?
+            // Le PromptEngineeringModule le fait déjà au step 5, mais on peut renforcer ici.
+            // Pour l'instant on juste update le status du quiz.
+
+            alert(`Quiz marqué comme ${status.toUpperCase()}`);
+            fetchData(); // Refresh data
+            setSelectedStudent(null);
+        } catch (e) {
+            console.error("Erreur grading:", e);
+            alert("Erreur lors de la notation.");
         }
     }
 
@@ -309,6 +351,73 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                         </div>
+                                        {/* QUIZ GRADING SECTION */}
+                                        {selectedStudent.activity_metadata.responses.quiz?.status === 'submitted' && (
+                                            <div className="md:col-span-2 border-t-2 border-neon pt-8 mt-8 bg-neon/5 p-6 animate-pulse">
+                                                <h4 className="text-xl font-black uppercase text-neon mb-6 flex items-center gap-2">
+                                                    <BookOpen size={24} /> RÉPONSES_EXAMEN_FINAL (GRADING_REQUIRED)
+                                                </h4>
+
+                                                <div className="space-y-8 mb-8">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="p-4 border border-neon/20">
+                                                            <p className="font-bold text-neon text-xs">Part 1 A</p>
+                                                            <p className="text-xs">{selectedStudent.activity_metadata.responses.quiz.part1_A}</p>
+                                                        </div>
+                                                        <div className="p-4 border border-neon/20">
+                                                            <p className="font-bold text-neon text-xs">Part 1 B</p>
+                                                            <p className="text-xs">{selectedStudent.activity_metadata.responses.quiz.part1_B}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-5 gap-2 text-center">
+                                                        <div className="p-2 border border-neon/20"><p className="text-[10px]">Q1</p><p className="font-bold">{selectedStudent.activity_metadata.responses.quiz.part2_q1}</p></div>
+                                                        <div className="p-2 border border-neon/20"><p className="text-[10px]">Q2</p><p className="font-bold">{selectedStudent.activity_metadata.responses.quiz.part2_q2}</p></div>
+                                                        <div className="p-2 border border-neon/20"><p className="text-[10px]">Q3</p><p className="font-bold">{selectedStudent.activity_metadata.responses.quiz.part2_q3}</p></div>
+                                                        <div className="p-2 border border-neon/20"><p className="text-[10px]">Q4 (Open)</p><p className="text-[8px] truncate" title={selectedStudent.activity_metadata.responses.quiz.part2_q4}>{selectedStudent.activity_metadata.responses.quiz.part2_q4.substring(0, 20)}...</p></div>
+                                                        <div className="p-2 border border-neon/20"><p className="text-[10px]">Q5 (Open)</p><p className="text-[8px] truncate" title={selectedStudent.activity_metadata.responses.quiz.part2_q5}>{selectedStudent.activity_metadata.responses.quiz.part2_q5.substring(0, 20)}...</p></div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-4">
+                                                        <div className="p-4 border border-neon/20">
+                                                            <p className="font-bold text-neon text-xs">Prompt 1 (Brainstorm)</p>
+                                                            <pre className="text-[10px] whitespace-pre-wrap font-mono">{selectedStudent.activity_metadata.responses.quiz.part3_p1}</pre>
+                                                        </div>
+                                                        <div className="p-4 border border-neon/20">
+                                                            <p className="font-bold text-neon text-xs">Prompt 2 (Creative)</p>
+                                                            <pre className="text-[10px] whitespace-pre-wrap font-mono">{selectedStudent.activity_metadata.responses.quiz.part3_p2}</pre>
+                                                        </div>
+                                                        <div className="p-4 border border-neon/20">
+                                                            <p className="font-bold text-neon text-xs">Prompt 3 (Open)</p>
+                                                            <pre className="text-[10px] whitespace-pre-wrap font-mono">{selectedStudent.activity_metadata.responses.quiz.part3_p3}</pre>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-4 justify-center">
+                                                    <button
+                                                        onClick={() => handleGradeQuiz(selectedStudent.id, 'failed')}
+                                                        className="px-8 py-4 bg-red-500 text-white font-black uppercase text-xs tracking-widest hover:bg-red-600 shadow-lg shadow-red-500/20"
+                                                    >
+                                                        REJETER (FAIL)
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleGradeQuiz(selectedStudent.id, 'passed')}
+                                                        className="px-8 py-4 bg-green-500 text-white font-black uppercase text-xs tracking-widest hover:bg-green-600 shadow-lg shadow-green-500/20"
+                                                    >
+                                                        VALIDER (PASS)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* SHOW STATUS IF GRADED */}
+                                        {selectedStudent.activity_metadata.responses.quiz?.status && selectedStudent.activity_metadata.responses.quiz.status !== 'submitted' && (
+                                            <div className="md:col-span-2 mt-8 text-center p-4 border border-white/10 opacity-50">
+                                                <p className="text-xs font-mono uppercase">
+                                                    QUIZ STATUS: <span className={selectedStudent.activity_metadata.responses.quiz.status === 'passed' ? 'text-green-500' : 'text-red-500'}>
+                                                        {selectedStudent.activity_metadata.responses.quiz.status.toUpperCase()}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
