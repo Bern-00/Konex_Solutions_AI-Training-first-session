@@ -26,18 +26,30 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     useEffect(() => {
-        loadSavedProgress();
-    }, []);
+        if (userId) {
+            console.log("PromptEngineeringModule: Initializing for user", userId);
+            loadSavedProgress();
+        }
+    }, [userId]);
 
     const loadSavedProgress = async () => {
+        if (!userId) return;
         setIsInitialLoading(true);
+        console.log("PromptEngineeringModule: Loading progress for chapter 11...");
         try {
             const savedData = await getActivityProgress(userId, 11);
+            console.log("PromptEngineeringModule: Received savedData:", savedData);
             if (savedData) {
-                setCurrentStep(savedData.step || 1);
-                setResponses(prev => ({ ...prev, ...savedData.responses }));
-                if (savedData.responses?.activity2?.toLowerCase().includes('glacial')) {
-                    setActivity2Validated(true);
+                if (savedData.step) {
+                    console.log("PromptEngineeringModule: Restoring step", savedData.step);
+                    setCurrentStep(savedData.step);
+                }
+                if (savedData.responses) {
+                    console.log("PromptEngineeringModule: Restoring responses", Object.keys(savedData.responses).length);
+                    setResponses(prev => ({ ...prev, ...savedData.responses }));
+                    if (savedData.responses.activity2?.toLowerCase().includes('glacial')) {
+                        setActivity2Validated(true);
+                    }
                 }
             }
         } catch (err) {
@@ -52,7 +64,9 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
 
         // Sauvegarder systématiquement la progression
         try {
-            await saveActivityProgress(userId, 4, 11, currentStep === 5 ? currentStep : nextStep, responses);
+            console.log(`PromptEngineeringModule: Saving progress - Step ${currentStep === 5 ? currentStep : nextStep}, Responses:`, responses);
+            const result = await saveActivityProgress(userId, 3, 11, currentStep === 5 ? currentStep : nextStep, responses);
+            console.log("PromptEngineeringModule: Save result:", result);
         } catch (err) {
             console.error("Erreur lors de la sauvegarde de la progression:", err);
         }
@@ -66,7 +80,7 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
             await supabase.from('user_progress').upsert({
                 user_id: userId,
                 chapter_id: 11,
-                module_id: 4,
+                module_id: 3,
                 completed: true,
                 completed_at: new Date().toISOString()
             }, { onConflict: 'user_id,chapter_id' });
