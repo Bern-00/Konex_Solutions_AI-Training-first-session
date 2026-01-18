@@ -19,7 +19,7 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
         activity3_1: '',
         activity3_2: '',
         activity4_1: '',
-        activity4_1: '',
+
         activity4_2: '',
         quiz: {
             part1_A: '',
