@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronRight, ExternalLink, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface PromptEngineeringModuleProps {
     userId: string;
@@ -22,10 +23,23 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     const [activity2Validated, setActivity2Validated] = useState(false);
     const [showActivity4Note, setShowActivity4Note] = useState(false);
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentStep < 5) {
             setCurrentStep(currentStep + 1);
         } else {
+            // Sauvegarder la complétion dans la base de données
+            const supabase = createClient();
+            try {
+                await supabase.from('user_progress').upsert({
+                    user_id: userId,
+                    chapter_id: 11, // ID créé pour ce module
+                    module_id: 4,   // ID du module Prompt Engineering
+                    completed: true,
+                    completed_at: new Date().toISOString()
+                }, { onConflict: 'user_id,chapter_id' });
+            } catch (err) {
+                console.error("Erreur lors de la sauvegarde de la progression:", err);
+            }
             onComplete();
         }
     };

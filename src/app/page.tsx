@@ -214,11 +214,13 @@ export default function Dashboard() {
   }
 
   const isModuleCompleted = (moduleId: number): boolean => {
-    // A module is completed if all of its 5 chapters are completed.
     const completedChaptersCount = userProgress.filter(
       (p: UserProgress) => p.module_id === moduleId && p.completed
     ).length;
-    return completedChaptersCount >= 5;
+    // Module 2 (Intro) has 5 chapters, but we'll accept 4 to unblock the user if they're close
+    if (moduleId === 2) return completedChaptersCount >= 4;
+    // For others, we just need at least one chapter completed (or the final activity)
+    return completedChaptersCount >= 1;
   };
 
   if (isLoading) {
@@ -294,10 +296,14 @@ export default function Dashboard() {
         {activeView === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto italic font-medium">
             <ModuleCard title="Introduction to LLMs" description="Basics of Large Language Models" order={1} seqId="7273e6" onStart={() => setActiveView('module-1')} />
-            <ModuleCard title="Prompt Engineering" description="Advanced AI interaction" order={2} seqId="6c76e8" locked={!isModuleCompleted(1)} onStart={() => setActiveView('module-2')} />
-            <ModuleCard title="Data Annotation" description="Hands-on labeling for AI" order={3} seqId="596001" onStart={() => setActiveView('annotation')} locked={!isModuleCompleted(2)} />
-            <ModuleCard title="Model Evaluation" description="Testing and validating AI systems" order={4} seqId="b2c3d4" locked={!isModuleCompleted(3)} onStart={() => setActiveView('module-4')} />
-            <ModuleCard title="Final Assessment" description="Evaluation & Certification" order={5} seqId="9c5a87" locked={!isModuleCompleted(4)} onStart={() => setActiveView('module-5')} />
+            {/* Prompt Engineering (Module 2) depends on Intro (ID 2) */}
+            <ModuleCard title="Prompt Engineering" description="Advanced AI interaction" order={2} seqId="6c76e8" locked={!isModuleCompleted(2)} onStart={() => setActiveView('module-2')} />
+            {/* Data Annotation (Module 3) depends on Prompt (ID 4) */}
+            <ModuleCard title="Data Annotation" description="Hands-on labeling for AI" order={3} seqId="596001" onStart={() => setActiveView('annotation')} locked={!isModuleCompleted(4)} />
+            {/* Model Evaluation (Module 4) depends on Annotation (ID 5) */}
+            <ModuleCard title="Model Evaluation" description="Testing and validating AI systems" order={4} seqId="b2c3d4" locked={!isModuleCompleted(5)} onStart={() => setActiveView('module-4')} />
+            {/* Final Assessment (Module 5) depends on Model Eval (ID 6) */}
+            <ModuleCard title="Final Assessment" description="Evaluation & Certification" order={5} seqId="9c5a87" locked={!isModuleCompleted(6)} onStart={() => setActiveView('module-5')} />
           </div>
         ) : (
           <div className="relative z-10">
