@@ -135,12 +135,56 @@ export async function getAllStudentsProgress() {
 
   const studentData = profiles
     .filter(p => p.email?.toLowerCase() !== adminEmail && p.is_admin !== true)
-    .map(profile => ({
-      ...profile,
-      user_progress: progress.filter(pr => pr.user_id === profile.id)
-    }))
+    .map(profile => {
+      const userProg = progress.filter(pr => pr.user_id === profile.id);
+      // Extraire les métadonnées d'activité si elles existent (chapitre 11 pour Module 2)
+      const activityData = userProg.find(pr => pr.chapter_id === 11)?.metadata || null;
 
-  return studentData
+      return {
+        ...profile,
+        user_progress: userProg,
+        activity_metadata: activityData
+      };
+    });
+
+  return studentData;
+}
+
+export async function saveActivityProgress(
+  userId: string,
+  moduleId: number,
+  chapterId: number,
+  step: number,
+  responses: any
+) {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from('user_progress')
+    .upsert({
+      user_id: userId,
+      module_id: moduleId,
+      chapter_id: chapterId,
+      metadata: { step, responses },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,chapter_id' });
+
+  if (error) throw error;
+  return { success: true };
+}
+
+export async function getActivityProgress(userId: string, chapterId: number) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('user_progress')
+    .select('metadata')
+    .eq('user_id', userId)
+    .eq('chapter_id', chapterId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.metadata || null;
 }
 
 export async function resetStudentAttempts(userId: string, chapterId: number) {

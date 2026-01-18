@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Trash2, Clock } from 'lucide-react';
+import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Clock } from 'lucide-react';
 import { getAllStudentsProgress, resetStudentAttempts } from '@/lib/progress';
 import { getMessages, markMessageAsRead } from '@/lib/messages';
 
@@ -17,6 +17,17 @@ interface StudentProgress {
         attempts: number;
         completed_at: string | null;
     }[];
+    activity_metadata: {
+        step: number;
+        responses: {
+            activity1: string;
+            activity2: string;
+            activity3_1: string;
+            activity3_2: string;
+            activity4_1: string;
+            activity4_2: string;
+        };
+    } | null;
 }
 
 interface Message {
@@ -54,11 +65,8 @@ export default function AdminDashboard() {
         setIsLoading(true);
         try {
             const data = await getAllStudentsProgress();
-            console.log('Admin Dashboard Data Fetched:', data);
             if (data && data.length > 0) {
                 setStudents(data as any);
-            } else {
-                console.warn('No students found in the database or filtered out.');
             }
         } catch (error) {
             console.error('Error fetching admin data:', error);
@@ -69,11 +77,10 @@ export default function AdminDashboard() {
 
     async function handleReset(userId: string, chapterId: number) {
         if (!confirm('Voulez-vous vraiment ré-attribuer les tentatives pour ce chapitre ?')) return;
-
         try {
             await resetStudentAttempts(userId, chapterId);
             alert('Tentatives réinitialisées avec succès.');
-            fetchData(); // Refresh
+            fetchData();
         } catch (error) {
             alert('Erreur lors de la réinitialisation.');
         }
@@ -134,7 +141,6 @@ export default function AdminDashboard() {
             {activeTab === 'students' && (
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Statistics Cards */}
                         <div className="lg:col-span-1 space-y-6">
                             <div className="bg-card-bg border border-neon/20 p-6 backdrop-blur-md">
                                 <div className="flex justify-between items-center mb-4">
@@ -143,7 +149,6 @@ export default function AdminDashboard() {
                                 </div>
                                 <div className="text-4xl font-black text-foreground">{students.length}</div>
                             </div>
-
                             <div className="bg-card-bg border border-neon/20 p-6 backdrop-blur-md">
                                 <div className="flex justify-between items-center mb-4">
                                     <span className="text-[10px] uppercase font-black opacity-50 text-neon tracking-widest">Taux_Moyen_Progression</span>
@@ -157,7 +162,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Student List Table */}
                         <div className="lg:col-span-2">
                             <div className="bg-card-bg border border-neon/20 overflow-hidden backdrop-blur-md">
                                 <table className="w-full text-left border-collapse">
@@ -165,7 +169,6 @@ export default function AdminDashboard() {
                                         <tr className="border-b border-neon/10 bg-neon/5">
                                             <th className="p-4 text-[10px] uppercase font-black tracking-widest text-neon/60">Etudiant</th>
                                             <th className="p-4 text-[10px] uppercase font-black tracking-widest text-neon/60">Module_1</th>
-                                            <th className="p-4 text-[10px] uppercase font-black tracking-widest text-neon/60">Dernière_Activité</th>
                                             <th className="p-4 text-[10px] uppercase font-black tracking-widest text-neon/60">Action</th>
                                         </tr>
                                     </thead>
@@ -174,7 +177,7 @@ export default function AdminDashboard() {
                                             <tr
                                                 key={student.id}
                                                 onClick={() => setSelectedStudent(student)}
-                                                className="border-b border-neon/5 hover:bg-neon/5 cursor-pointer transition-colors group"
+                                                className="border-b border-neon/5 hover:bg-neon/5 cursor-pointer transition-colors"
                                             >
                                                 <td className="p-4">
                                                     <div className="font-bold text-foreground text-sm">{student.full_name || 'Utilisateur'}</div>
@@ -191,30 +194,17 @@ export default function AdminDashboard() {
                                                         <span className="text-neon">{calculateOverallProgress(student.user_progress)}%</span>
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-foreground/60">
-                                                    {student.user_progress.length > 0
-                                                        ? new Date(student.user_progress.sort((a, b) => new Date(b.completed_at || '').getTime() - new Date(a.completed_at || '').getTime())[0].completed_at || '').toLocaleDateString()
-                                                        : 'Jamais'}
-                                                </td>
                                                 <td className="p-4">
                                                     <ChevronRight size={14} className="text-neon" />
                                                 </td>
                                             </tr>
                                         ))}
-                                        {filteredStudents.length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="p-10 text-center text-neon/40 italic">
-                                                    AUCUN ETUDIANT DETECTE DANS LA BASE DE DONNEES.
-                                                </td>
-                                            </tr>
-                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
-                    {/* Detailed Selection View */}
                     {selectedStudent && (
                         <div className="mt-12 border border-neon/30 p-10 bg-card-bg relative animate-in fade-in slide-in-from-bottom-5">
                             <div className="absolute top-4 right-6 font-mono text-neon opacity-10 text-4xl font-black italic select-none">STUDENT_DETAIL</div>
@@ -245,43 +235,83 @@ export default function AdminDashboard() {
                                                     <p className="text-[9px] opacity-60">Score: {p.score !== null ? `${p.score}%` : 'N/A'} | Tentatives: {p.attempts}/2</p>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    {p.completed ? (
-                                                        <UserCheck size={16} className="text-green-500" />
-                                                    ) : (
-                                                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                                                    )}
-
+                                                    {p.completed ? <UserCheck size={16} className="text-green-500" /> : <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />}
                                                     {p.attempts >= 2 && !p.completed && (
-                                                        <button
-                                                            onClick={() => handleReset(selectedStudent.id, p.chapter_id)}
-                                                            className="bg-neon text-background p-2 rounded hover:scale-110 transition-transform"
-                                                            title="Ré-attribuer des tentatives"
-                                                        >
+                                                        <button onClick={() => handleReset(selectedStudent.id, p.chapter_id)} className="bg-neon text-background p-2 rounded hover:scale-110 transistion-transform">
                                                             <RotateCcw size={12} />
                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
                                         ))}
-                                        {selectedStudent.user_progress.length === 0 && (
-                                            <p className="text-[10px] font-mono opacity-50 italic">Aucune donnée de progression enregistrée.</p>
-                                        )}
                                     </div>
                                 </div>
-
                                 <div className="bg-neon/5 border border-neon/20 p-6 flex flex-col justify-center items-center text-center">
                                     <BarChart3 size={40} className="text-neon/30 mb-4" />
                                     <h4 className="text-sm font-bold uppercase tracking-widest text-neon mb-2">Performance_Analytique</h4>
                                     <p className="text-[10px] font-mono opacity-60 leading-relaxed">
                                         L'étudiant a complété {selectedStudent.user_progress.filter(p => p.completed).length} unités.<br />
-                                        Son score moyen est de {
-                                            selectedStudent.user_progress.length > 0
-                                                ? Math.round(selectedStudent.user_progress.reduce((acc, p) => acc + (p.score || 0), 0) / selectedStudent.user_progress.length)
-                                                : 0
-                                        }%.
+                                        Score moyen: {selectedStudent.user_progress.length > 0 ? Math.round(selectedStudent.user_progress.reduce((acc, p) => acc + (p.score || 0), 0) / selectedStudent.user_progress.length) : 0}%
                                     </p>
                                 </div>
                             </div>
+
+                            {selectedStudent.activity_metadata && (
+                                <div className="mt-12 pt-10 border-t border-neon/20">
+                                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neon mb-8 flex items-center gap-2">
+                                        <BarChart3 size={14} /> Analyse_Des_Activités_Module_2
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="p-6 bg-neon/5 border border-neon/10 space-y-4">
+                                            <p className="text-[10px] text-neon font-black uppercase tracking-widest">Activité 1: Gems Description</p>
+                                            <div className="text-xs p-4 bg-black/40 border border-white/5 font-mono text-foreground/80 whitespace-pre-wrap">
+                                                {selectedStudent.activity_metadata.responses.activity1 || 'Pas de réponse'}
+                                            </div>
+                                        </div>
+                                        <div className="p-6 bg-neon/5 border border-neon/10 space-y-4">
+                                            <p className="text-[10px] text-neon font-black uppercase tracking-widest">Activité 2: Few Shot ( Patterns )</p>
+                                            <div className="text-xs p-4 bg-black/40 border border-white/5 font-mono text-foreground/80">
+                                                Réponse: <span className="text-neon">{selectedStudent.activity_metadata.responses.activity2 || 'N/A'}</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 bg-neon/5 border border-neon/10 space-y-4 md:col-span-2">
+                                            <p className="text-[10px] text-neon font-black uppercase tracking-widest">Activité 3: Chain of Thought (CoT)</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <p className="text-[8px] opacity-40 uppercase tracking-tighter italic">Prompt Direct</p>
+                                                    <div className="text-[10px] p-4 bg-black/40 border border-white/5 font-mono text-foreground/80 min-h-[80px] whitespace-pre-wrap">
+                                                        {selectedStudent.activity_metadata.responses.activity3_1}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-[8px] opacity-40 uppercase tracking-tighter italic">Prompt CoT</p>
+                                                    <div className="text-[10px] p-4 bg-black/40 border border-white/5 font-mono text-foreground/80 min-h-[80px] whitespace-pre-wrap">
+                                                        {selectedStudent.activity_metadata.responses.activity3_2}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-6 bg-neon/5 border border-neon/10 space-y-4 md:col-span-2">
+                                            <p className="text-[10px] text-neon font-black uppercase tracking-widest">Activité 4: Security (Injection & Jailbreaking)</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <p className="text-[8px] opacity-40 uppercase tracking-tighter italic">Injection</p>
+                                                    <div className="text-[10px] p-4 bg-black/40 border border-white/5 font-mono text-foreground/80 min-h-[80px] whitespace-pre-wrap">
+                                                        {selectedStudent.activity_metadata.responses.activity4_1}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-[8px] opacity-40 uppercase tracking-tighter italic">Jailbreaking</p>
+                                                    <div className="text-[10px] p-4 bg-black/40 border border-white/5 font-mono text-foreground/80 min-h-[80px] whitespace-pre-wrap">
+                                                        {selectedStudent.activity_metadata.responses.activity4_2}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </>
@@ -292,48 +322,25 @@ export default function AdminDashboard() {
                     <h3 className="text-2xl font-black uppercase italic text-foreground mb-8 flex items-center gap-4">
                         <MessageSquare className="text-neon" /> Inbox_Feedback
                     </h3>
-
                     <div className="grid grid-cols-1 gap-4">
                         {messages.map((msg) => (
-                            <div
-                                key={msg.id}
-                                className={`p-6 border transition-all ${msg.is_read ? 'bg-card-bg/50 border-neon/10 opacity-70' : 'bg-card-bg border-neon/30 border-l-4 border-l-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.05)]'}`}
-                            >
+                            <div key={msg.id} className={`p-6 border transition-all ${msg.is_read ? 'bg-card-bg/50 border-neon/10 opacity-70' : 'bg-card-bg border-neon/30 border-l-4 border-l-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.05)]'}`}>
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
                                         <h4 className="font-bold text-foreground text-sm uppercase">{msg.user_full_name}</h4>
                                         <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-[9px] font-mono text-neon/40 flex items-center gap-1">
-                                                <Clock size={10} /> {new Date(msg.created_at).toLocaleString()}
-                                            </span>
-                                            {!msg.is_read && (
-                                                <span className="text-[8px] bg-neon text-background px-1.5 py-0.5 font-bold uppercase tracking-tighter">New_Signal</span>
-                                            )}
+                                            <span className="text-[9px] font-mono text-neon/40 flex items-center gap-1"><Clock size={10} /> {new Date(msg.created_at).toLocaleString()}</span>
+                                            {!msg.is_read && <span className="text-[8px] bg-neon text-background px-1.5 py-0.5 font-bold uppercase tracking-tighter">New_Signal</span>}
                                         </div>
                                     </div>
                                     {!msg.is_read && (
-                                        <button
-                                            onClick={async () => {
-                                                await markMessageAsRead(msg.id);
-                                                fetchMessages();
-                                            }}
-                                            className="text-[9px] font-mono text-neon hover:underline"
-                                        >
-                                            MARQUER_LU
-                                        </button>
+                                        <button onClick={async () => { await markMessageAsRead(msg.id); fetchMessages(); }} className="text-[9px] font-mono text-neon hover:underline">MARQUER_LU</button>
                                     )}
                                 </div>
-                                <p className="text-foreground/80 text-sm leading-relaxed bg-black/20 p-4 border border-white/5 font-mono">
-                                    {msg.content}
-                                </p>
+                                <p className="text-foreground/80 text-sm leading-relaxed bg-black/20 p-4 border border-white/5 font-mono">{msg.content}</p>
                             </div>
                         ))}
-
-                        {messages.length === 0 && (
-                            <div className="p-20 text-center border border-dashed border-neon/20">
-                                <p className="text-[10px] uppercase font-mono text-neon/40 italic">Aucun message reçu dans le canal sécurisé.</p>
-                            </div>
-                        )}
+                        {messages.length === 0 && <div className="p-20 text-center border border-dashed border-neon/20"><p className="text-[10px] uppercase font-mono text-neon/40 italic">Aucun message reçu.</p></div>}
                     </div>
                 </div>
             )}

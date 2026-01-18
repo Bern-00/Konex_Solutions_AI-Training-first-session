@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, ExternalLink, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { saveActivityProgress, getActivityProgress } from '@/lib/progress';
 
 interface PromptEngineeringModuleProps {
     userId: string;
@@ -22,24 +23,54 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     });
     const [activity2Validated, setActivity2Validated] = useState(false);
     const [showActivity4Note, setShowActivity4Note] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+    useEffect(() => {
+        loadSavedProgress();
+    }, []);
+
+    const loadSavedProgress = async () => {
+        setIsInitialLoading(true);
+        try {
+            const savedData = await getActivityProgress(userId, 11);
+            if (savedData) {
+                setCurrentStep(savedData.step || 1);
+                setResponses(prev => ({ ...prev, ...savedData.responses }));
+                if (savedData.responses?.activity2?.toLowerCase().includes('glacial')) {
+                    setActivity2Validated(true);
+                }
+            }
+        } catch (err) {
+            console.error("Error loading progress:", err);
+        } finally {
+            setIsInitialLoading(false);
+        }
+    };
 
     const handleNext = async () => {
+        const nextStep = currentStep + 1;
+
+        // Sauvegarder systématiquement la progression
+        try {
+            await saveActivityProgress(userId, 4, 11, currentStep === 5 ? currentStep : nextStep, responses);
+        } catch (err) {
+            console.error("Erreur lors de la sauvegarde de la progression:", err);
+        }
+
         if (currentStep < 5) {
-            setCurrentStep(currentStep + 1);
+            setCurrentStep(nextStep);
         } else {
-            // Sauvegarder la complétion dans la base de données
+            // Marquer comme complété (déjà géré par saveActivityProgress avec step 5 si on veut, 
+            // mais on garde l'appel explicite pour la clarté de l'upsert 'completed')
             const supabase = createClient();
-            try {
-                await supabase.from('user_progress').upsert({
-                    user_id: userId,
-                    chapter_id: 11, // ID créé pour ce module
-                    module_id: 4,   // ID du module Prompt Engineering
-                    completed: true,
-                    completed_at: new Date().toISOString()
-                }, { onConflict: 'user_id,chapter_id' });
-            } catch (err) {
-                console.error("Erreur lors de la sauvegarde de la progression:", err);
-            }
+            await supabase.from('user_progress').upsert({
+                user_id: userId,
+                chapter_id: 11,
+                module_id: 4,
+                completed: true,
+                completed_at: new Date().toISOString()
+            }, { onConflict: 'user_id,chapter_id' });
+
             onComplete();
         }
     };
@@ -62,6 +93,10 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
             default: return true;
         }
     };
+
+    if (isInitialLoading) {
+        return <div className="text-neon font-mono text-center p-20 animate-pulse">SYNCHRONISATION_PROGRESSION...</div>;
+    }
 
     return (
         <div className="max-w-4xl mx-auto pb-20 font-mono">
