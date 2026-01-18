@@ -27,6 +27,26 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     const [saveStatus, setSaveStatus] = useState<string>('idle'); // idle, saving, saved, error
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
 
+    // AUTOSAVE EFFECT
+    useEffect(() => {
+        if (isInitialLoading || !userId) return;
+
+        const timer = setTimeout(async () => {
+            setSaveStatus('Autosaving...');
+            try {
+                // Utiliser module_id 2 toujours
+                await saveActivityProgress(userId, 2, 11, currentStep, responses);
+                setSaveStatus('Saved (Auto)');
+                setLastSaveTime(new Date().toLocaleTimeString());
+            } catch (err: any) {
+                console.error("Autosave error:", err);
+                setSaveStatus('Autosave Error');
+            }
+        }, 2000); // 2 secondes de délai
+
+        return () => clearTimeout(timer);
+    }, [responses, userId]); // Ne pas inclure currentStep pour éviter double save avec handleNext
+
     useEffect(() => {
         if (userId) {
             console.log("PromptEngineeringModule: Initializing for user", userId);
