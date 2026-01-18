@@ -165,8 +165,7 @@ export async function saveActivityProgress(
       user_id: userId,
       module_id: moduleId,
       chapter_id: chapterId,
-      metadata: { step, responses },
-      updated_at: new Date().toISOString()
+      metadata: { step, responses }
     }, { onConflict: 'user_id,chapter_id' });
 
   if (error) throw error;
@@ -183,7 +182,10 @@ export async function getActivityProgress(userId: string, chapterId: number) {
     .eq('chapter_id', chapterId)
     .maybeSingle();
 
-  if (error) throw error;
+  if (error) {
+    console.error("getActivityProgress ERROR:", error);
+    throw error;
+  }
   return data?.metadata || null;
 }
 

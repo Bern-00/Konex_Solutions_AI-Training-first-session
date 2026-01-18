@@ -24,6 +24,8 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     const [activity2Validated, setActivity2Validated] = useState(false);
     const [showActivity4Note, setShowActivity4Note] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [saveStatus, setSaveStatus] = useState<string>('idle'); // idle, saving, saved, error
+    const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
 
     useEffect(() => {
         if (userId) {
@@ -33,8 +35,12 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
     }, [userId]);
 
     const loadSavedProgress = async () => {
-        if (!userId) return;
+        if (!userId) {
+            setSaveStatus('Error: No User ID');
+            return;
+        }
         setIsInitialLoading(true);
+        setSaveStatus('Loading data...');
         console.log("PromptEngineeringModule: Loading progress for chapter 11...");
         try {
             const savedData = await getActivityProgress(userId, 11);
@@ -51,9 +57,13 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
                         setActivity2Validated(true);
                     }
                 }
+                setSaveStatus('Data Loaded');
+            } else {
+                setSaveStatus('No saved data found');
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error loading progress:", err);
+            setSaveStatus(`Load Error: ${err.message || 'Unknown'}`);
         } finally {
             setIsInitialLoading(false);
         }
@@ -64,11 +74,15 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
 
         // Sauvegarder systématiquement la progression
         try {
+            setSaveStatus('Saving...');
             console.log(`PromptEngineeringModule: Saving progress - Step ${currentStep === 5 ? currentStep : nextStep}, Responses:`, responses);
             const result = await saveActivityProgress(userId, 3, 11, currentStep === 5 ? currentStep : nextStep, responses);
             console.log("PromptEngineeringModule: Save result:", result);
-        } catch (err) {
+            setSaveStatus('Saved');
+            setLastSaveTime(new Date().toLocaleTimeString());
+        } catch (err: any) {
             console.error("Erreur lors de la sauvegarde de la progression:", err);
+            setSaveStatus(`Save Error: ${err.message || 'Unknown'}`);
         }
 
         if (currentStep < 5) {
@@ -131,6 +145,17 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
             <div className="border border-neon/30 p-10 relative backdrop-blur-xl bg-card-bg shadow-lg">
                 <div className="absolute top-4 right-6 text-neon opacity-10 text-4xl font-black italic select-none">
                     ACTIVITY_0{currentStep}
+                </div>
+
+                {/* DEBUG STATUS INDICATOR */}
+                <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none">
+                    <div className={`text-[10px] font-mono px-2 py-1 rounded border ${saveStatus === 'Saved' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
+                            saveStatus.includes('Error') ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                                'bg-neon/10 text-neon border-neon/20'
+                        }`}>
+                        STATUS: {saveStatus.toUpperCase()}
+                        {lastSaveTime && <span className="opacity-50 ml-2">({lastSaveTime})</span>}
+                    </div>
                 </div>
 
                 {currentStep === 1 && (
