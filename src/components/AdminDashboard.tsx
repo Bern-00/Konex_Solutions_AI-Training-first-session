@@ -143,6 +143,12 @@ export default function AdminDashboard() {
             const responses = selectedStudent.activity_metadata.responses;
             const quiz = responses.quiz;
 
+            if (!quiz) {
+                alert("Erreur: Le quiz n'est pas présent dans les données de l'étudiant.");
+                setIsAnalyzing(false);
+                return;
+            }
+
             const prompt = `
                 Tu es un expert en Prompt Engineering et tu corriges l'examen final d'un étudiant.
                 
