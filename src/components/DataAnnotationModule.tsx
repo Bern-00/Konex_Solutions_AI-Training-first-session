@@ -79,40 +79,66 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState<string>('idle');
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+    const [activeChapterId, setActiveChapterId] = useState<number>(31); // Default fallback
+
+    // RESOLVE CHAPTER ID
+    useEffect(() => {
+        async function resolveChapter() {
+            try {
+                const supabase = createClient();
+                const { data: moduleData, error: mErr } = await supabase
+                    .from('modules')
+                    .select('id')
+                    .eq('slug', 'data-annotation')
+                    .maybeSingle();
+
+                if (moduleData) {
+                    const { data: chapterData, error: cErr } = await supabase
+                        .from('chapters')
+                        .select('id')
+                        .eq('module_id', moduleData.id)
+                        .order('order_index', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (chapterData) {
+                        console.log("Found Chapter ID for Data Annotation:", chapterData.id);
+                        setActiveChapterId(chapterData.id);
+                    }
+                }
+            } catch (err) {
+                console.error("Error resolving chapter id:", err);
+            }
+        }
+        resolveChapter();
+    }, []);
 
     // AUTOSAVE EFFECT
     useEffect(() => {
         // IMPORTANT: Prevent autosave during initial load or if no data
-        if (isInitialLoading || !userId) return;
+        if (isInitialLoading || !userId || !activeChapterId) return;
 
         const timer = setTimeout(async () => {
             setSaveStatus('Autosaving...');
             try {
-                // Module ID 3, Chapter ID 31 (Arbitrary but consistent)
-                await saveActivityProgress(userId, 3, 31, currentSection, responses);
+                await saveActivityProgress(userId, 3, activeChapterId, currentSection, responses);
                 setSaveStatus('Saved (Auto)');
                 setLastSaveTime(new Date().toLocaleTimeString());
             } catch (err: any) {
-                console.error("Autosave error:", err);
-                setSaveStatus('Autosave Error');
+                console.error("Autosave internal error:", err);
+                setSaveStatus(`Error: ${err.message || 'Check Console'}`);
             }
-        }, 5000); // 5 seconds wait to avoid rapid fire
+        }, 5000);
 
         return () => clearTimeout(timer);
-    }, [responses, currentSection, userId, isInitialLoading]);
+    }, [responses, currentSection, userId, isInitialLoading, activeChapterId]);
 
-    useEffect(() => {
-        if (userId) {
-            loadSavedProgress();
-        }
-    }, [userId]);
-
-    const loadSavedProgress = async () => {
+    const loadSavedProgress = async (chapId: number) => {
         if (!userId) return;
         setIsInitialLoading(true);
-        console.log("Loading progress for user:", userId);
+        console.log("Loading progress for user:", userId, "on chapter:", chapId);
         try {
-            const savedData = await getActivityProgress(userId, 31);
+            const savedData = await getActivityProgress(userId, chapId);
             if (savedData) {
                 console.log("Saved data found:", savedData);
                 if (savedData.step) setCurrentSection(savedData.step);
@@ -120,27 +146,33 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                     setResponses(savedData.responses);
                 }
             } else {
-                console.log("No saved data found for chapter 31");
+                console.log("No saved data found for chapter", chapId);
             }
         } catch (err: any) {
             console.error("Error loading progress:", err);
         } finally {
-            // Give React a moment to process setResponses before enabling autosave
             setTimeout(() => {
                 setIsInitialLoading(false);
             }, 500);
         }
     };
 
+    useEffect(() => {
+        if (userId && activeChapterId) {
+            loadSavedProgress(activeChapterId);
+        }
+    }, [userId, activeChapterId]);
+
     const handleNext = async () => {
         const nextSection = currentSection + 1;
         try {
             setSaveStatus('Saving...');
-            await saveActivityProgress(userId, 3, 31, currentSection === 6 ? 6 : nextSection, responses);
+            await saveActivityProgress(userId, 3, activeChapterId, currentSection === 6 ? 6 : nextSection, responses);
             setSaveStatus('Saved');
             setLastSaveTime(new Date().toLocaleTimeString());
         } catch (err: any) {
-            console.error("Save error:", err);
+            console.error("Manual save error:", err);
+            setSaveStatus(`Error: ${err.message}`);
         }
 
         if (currentSection < 6) {
@@ -325,7 +357,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             </div>
                             <div className="bg-black/40 p-0 text-center border border-dashed border-neon/20 overflow-hidden group">
                                 <img
-                                    src="/images/task_dense_captioning.jpg"
+                                    src="/task_dense_captioning.jpg"
                                     alt="Task Scene"
                                     className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700"
                                 />
@@ -386,7 +418,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 {[1, 2, 3, 4].map(idx => (
                                     <div key={idx} className="aspect-[2/3] bg-black/40 border border-neon/10 overflow-hidden relative group">
                                         <img
-                                            src={`/images/task_prompt_${idx}.jpg`}
+                                            src={`/${idx === 1 ? 'task_prompt_1.jpg' : idx === 2 ? 'task_prompt_2.jpg' : idx === 3 ? 'task_prompt_3.jpg' : 'task_prompt_4.jpg'}`}
                                             alt={`Génération ${idx}`}
                                             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                                         />
