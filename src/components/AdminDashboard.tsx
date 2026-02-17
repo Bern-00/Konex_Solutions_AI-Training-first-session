@@ -133,8 +133,8 @@ export default function AdminDashboard() {
 
             if (responses.exam) {
                 // It's Module 3
-                moduleId = 3;
-                chapterId = 31;
+                moduleId = 5;
+                chapterId = 16;
                 updatedResponses = {
                     ...responses,
                     exam: {

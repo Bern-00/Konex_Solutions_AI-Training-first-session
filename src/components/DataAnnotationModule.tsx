@@ -79,8 +79,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState<string>('idle');
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
-    const [activeChapterId, setActiveChapterId] = useState<number>(31); // Default fallback
-    const [activeModuleId, setActiveModuleId] = useState<number>(3); // Default fallback
+    const [activeChapterId, setActiveChapterId] = useState<number>(16); // Correct Chapter ID for Data Annotation
+    const [activeModuleId, setActiveModuleId] = useState<number>(5); // Correct Module ID
 
     // RESOLVE ID
     useEffect(() => {
@@ -421,7 +421,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 {[1, 2, 3, 4].map(idx => (
                                     <div key={idx} className="aspect-[2/3] bg-black/40 border border-neon/10 overflow-hidden relative group">
                                         <img
-                                            src={`/task_prompt_${idx}.jpg`}
+                                            src={idx === 1 ? "/task_prompt_1.jpg" : idx === 2 ? "/task_prompt_2.png" : idx === 3 ? "/task_prompt_3.png" : `/task_prompt_${idx}.jpg`}
                                             alt={`Génération ${idx}`}
                                             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                                         />
