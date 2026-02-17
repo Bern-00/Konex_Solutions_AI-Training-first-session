@@ -80,10 +80,11 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
     const [saveStatus, setSaveStatus] = useState<string>('idle');
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
     const [activeChapterId, setActiveChapterId] = useState<number>(31); // Default fallback
+    const [activeModuleId, setActiveModuleId] = useState<number>(3); // Default fallback
 
-    // RESOLVE CHAPTER ID
+    // RESOLVE ID
     useEffect(() => {
-        async function resolveChapter() {
+        async function resolveIDs() {
             try {
                 const supabase = createClient();
                 const { data: moduleData, error: mErr } = await supabase
@@ -93,6 +94,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                     .maybeSingle();
 
                 if (moduleData) {
+                    setActiveModuleId(moduleData.id);
                     const { data: chapterData, error: cErr } = await supabase
                         .from('chapters')
                         .select('id')
@@ -102,36 +104,37 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                         .maybeSingle();
 
                     if (chapterData) {
-                        console.log("Found Chapter ID for Data Annotation:", chapterData.id);
+                        console.log("Found IDs for Data Annotation - Module:", moduleData.id, "Chapter:", chapterData.id);
                         setActiveChapterId(chapterData.id);
                     }
                 }
             } catch (err) {
-                console.error("Error resolving chapter id:", err);
+                console.error("Error resolving ids:", err);
             }
         }
-        resolveChapter();
+        resolveIDs();
     }, []);
 
     // AUTOSAVE EFFECT
     useEffect(() => {
         // IMPORTANT: Prevent autosave during initial load or if no data
-        if (isInitialLoading || !userId || !activeChapterId) return;
+        if (isInitialLoading || !userId || !activeChapterId || !activeModuleId) return;
 
         const timer = setTimeout(async () => {
             setSaveStatus('Autosaving...');
             try {
-                await saveActivityProgress(userId, 3, activeChapterId, currentSection, responses);
+                await saveActivityProgress(userId, activeModuleId, activeChapterId, currentSection, responses);
                 setSaveStatus('Saved (Auto)');
                 setLastSaveTime(new Date().toLocaleTimeString());
             } catch (err: any) {
                 console.error("Autosave internal error:", err);
-                setSaveStatus(`Error: ${err.message || 'Check Console'}`);
+                // Extra detailed error for user to see in UI
+                setSaveStatus(`Error: ${err.message || 'Check DB Constraint'}`);
             }
         }, 5000);
 
         return () => clearTimeout(timer);
-    }, [responses, currentSection, userId, isInitialLoading, activeChapterId]);
+    }, [responses, currentSection, userId, isInitialLoading, activeChapterId, activeModuleId]);
 
     const loadSavedProgress = async (chapId: number) => {
         if (!userId) return;
@@ -167,7 +170,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
         const nextSection = currentSection + 1;
         try {
             setSaveStatus('Saving...');
-            await saveActivityProgress(userId, 3, activeChapterId, currentSection === 6 ? 6 : nextSection, responses);
+            await saveActivityProgress(userId, activeModuleId, activeChapterId, currentSection === 6 ? 6 : nextSection, responses);
             setSaveStatus('Saved');
             setLastSaveTime(new Date().toLocaleTimeString());
         } catch (err: any) {
@@ -418,7 +421,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 {[1, 2, 3, 4].map(idx => (
                                     <div key={idx} className="aspect-[2/3] bg-black/40 border border-neon/10 overflow-hidden relative group">
                                         <img
-                                            src={`/${idx === 1 ? 'task_prompt_1.jpg' : idx === 2 ? 'task_prompt_2.jpg' : idx === 3 ? 'task_prompt_3.jpg' : 'task_prompt_4.jpg'}`}
+                                            src={`/task_prompt_${idx}.jpg`}
                                             alt={`Génération ${idx}`}
                                             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
                                         />
@@ -562,7 +565,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                                 <ChevronRight size={12} className="group-open:rotate-90 transition-transform" />
                                             </summary>
                                             <div className="mt-4 p-4 bg-black/40 border border-white/5 text-[10px] leading-relaxed font-mono text-foreground/80 max-h-[250px] overflow-y-auto thin-scrollbar">
-                                                Le gouvernement fédéral a défavorisé le Québec par rapport à l'Ontario dans la filière batterie, selon le premier ministre François Legault. On n'a pas eu notre part, a-t-il déclaré jeudi matin en mêlée de presse. Ottawa a financé trois usines de la filière batterie en Ontario mais seulement une au Québec, soit la suédoise Northvolt en Montérégie, ce qui fait dire d'ailleurs à l'opposition officielle que le gouvernement Legault a mal négocié. Je trouve qu'il y a un manque d'équité du fédéral, a conclu François Legault, alors que son adversaire libéral Marc Tanguay y voit un signe selon lequel le gouvernement caquiste a conclu un mauvais deal avec Northvolt. Québec et Ottawa se sont respectivement engagés à l'origine à accorder plus de 1,3 milliard $ chacun dans le projet d'usine de Northvolt, dans la phase de construction, mais le fédéral n'a pas encore versé un sou, tandis que Québec a déjà décaissé 700 millions $. Par comparaison, le directeur parlementaire du budget à Ottawa a estimé à plus de 18 milliards $ l'aide totale accordée par le fédéral pour deux grandes usines de batteries en Ontario. On a négocié comme on a pu avec le fédéral, a admis M. Legault, ajoutant qu'à terme, le fédéral devrait tout de même verser les deux tiers d'un total de 4,6 milliards $ consentis à Northvolt en fonds publics. C'est lui [François Legault] qui a négocié et signé [l'entente], il n'a que lui-même à blâmer s'il n'aime plus son entente. François Legault est-il en train de dire que Northvolt est un mauvais deal pour le Québec? Une citation de Marc Tanguay, chef intérimaire du Parti libéral du Québec et chef de l'opposition officielle Jamais rien de sûr Il n'y a jamais rien de sûr en économie, a répondu M. Legault à une questions au sujet du risque que comportent des investissements dans la filière batterie. Je continue à avoir espoir que l'usine va se construire au Québec par Northvolt. Je suis convaincu que, dans quelques années, tous ceux qui chialent vont dire : "Bravo d'avoir investi dans la filière batterie!" Une citation de François Legault, premier ministre du Québec Northvolt a un produit extraordinaire, a-t-il ajouté pour se montrer rassurant, empruntant ensuite une métaphore au baseball. Ce qui est important, c'est la moyenne au bâton, a-t-il laissé entendre en suggérant que l'histoire lui donnera raison. Le premier ministre a fait cette sortie au lendemain d'un avertissement lancé par le ministre fédéral de l'Innovation, des Sciences et de l'Industrie, François-Philippe Champagne. Celui-ci a mis en garde Québec contre la redistribution à d'autres entreprises, évoquée par le gouvernement caquiste, d'un bloc d'énergie de 354 mégawatts réservé à l'entreprise suédoise Northvolt pour son projet d'usine de batteries en Montérégie, et ce, dans un contexte de pénurie d'alimentation électrique pour les entreprises.
+                                                Le gouvernement fédéral a défavorisé le Québec par rapport à l'Ontario dans la filière batterie, selon le premier ministre François Legault. On n'a pas eu notre part, a-t-il déclaré jeudi matin en mêlée de presse. Ottawa a financé trois usines de la filière batterie en Ontario mais seulement une au Québec, soit la suédoise Northvolt en Montérégie, ce qui fait dire d'ailleurs à l'opposition officielle que le gouvernement Legault a mal négocié. Je trouve qu'il y a un manque d'équité du fédéral, a conclu François Legault, alors que son adversaire libéral Marc Tanguay y voit un signe selon lequel le gouvernement caquiste a conclu un mauvais deal avec Northvolt. Québec et Ottawa se sont respectivement engagés à l'origine à accorder plus de 1,3 milliard $ chacun dans le projet d'usine de Northvolt, dans la phase de construction, mais le fédéral n'a pas encore versé un sou, tandis que Québec a déjà décaissé 700 millions $. Par comparaison, le directeur parlementaire du budget à Ottawa a estimé à plus de 18 milliards $ l'aide totale accordée par le fédéral pour deux grandes usines de batteries en Ontario. On a négocié comme on a pu avec le fédéral, a admis M. Legault, ajoutant qu'à terme, le fédéral devrait tout de même verser les deux tiers d'un total de 4,6 milliards $ consentis à Northvolt en fonds publics. C'est lui [François Legault] qui a négocié et signé [l'entente], il n'a que lui-même à blâmer s'il n'aime plus son entente. François Legault est-il en train de dire que Northvolt est un mauvais deal pour le Québec? Une citation de Marc Tanguay, chef intérimaire du Parti libéral du Québec et chef de l'opposition officielle Jamais rien de sûr Il n'y a jamais rien de sûr en économie, a répondu M. Legault à une questions au sujet du risque que comportent des investissements dans la filière batterie. Je continue à avoir espoir que l'usine va se construire au Québec par Northvolt. Je suis convaincu que, dans quelques années, tous those qui chialent vont dire : "Bravo d'avoir investi dans la filière batterie!" Une citation de François Legault, premier ministre du Québec Northvolt a un produit extraordinaire, a-t-il ajouté pour se montrer rassurant, empruntant ensuite une métaphore au baseball. Ce qui est important, c'est la moyenne au bâton, a-t-il laissé entendre en suggérant que l'histoire lui donnera raison. Le premier ministre a fait cette sortie au lendemain d'un avertissement lancé par le ministre fédéral de l'Innovation, des Sciences et de l'Industrie, François-Philippe Champagne. Celui-ci a mis en garde Québec contre la redistribution à d'autres entreprises, évoquée par le gouvernement caquiste, d'un bloc d'énergie de 354 mégawatts réservé à l'entreprise suédoise Northvolt pour son projet d'usine de batteries en Montérégie, et ce, dans un contexte de pénurie d'alimentation électrique pour les entreprises.
                                             </div>
                                         </details>
                                     </div>
@@ -661,7 +664,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                                 };
                                                 setResponses(updated);
                                                 try {
-                                                    await saveActivityProgress(userId, 3, 31, 6, updated);
+                                                    await saveActivityProgress(userId, activeModuleId, activeChapterId, 6, updated);
                                                 } catch (e) {
                                                     console.error("Submission error:", e);
                                                 }
