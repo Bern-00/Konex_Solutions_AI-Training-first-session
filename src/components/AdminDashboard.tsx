@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Clock, Brain, Sparkles } from 'lucide-react';
+import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Clock, Brain, Sparkles, ShieldAlert } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { getAllStudentsProgress, resetStudentAttempts, saveActivityProgress } from '@/lib/progress';
 import { getMessages, markMessageAsRead } from '@/lib/messages';
 import { GoogleGenerativeAI } from '@google/generative-ai';
