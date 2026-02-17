@@ -138,7 +138,7 @@ export default function AdminDashboard() {
         setIsAnalyzing(true);
         try {
             const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
             const responses = selectedStudent.activity_metadata.responses;
             const quiz = responses.quiz;
@@ -194,9 +194,10 @@ export default function AdminDashboard() {
 
             setSuggestedScore(analysis.score);
             setSuggestedFeedback(analysis.feedback);
-        } catch (error) {
-            console.error("AI Analysis Error:", error);
-            alert("Erreur lors de l'analyse AI. Vérifiez la clé API.");
+        } catch (error: any) {
+            console.error("AI Analysis Error details:", error);
+            const errorMessage = error?.message || "Erreur inconnue";
+            alert(`Erreur lors de l'analyse AI: ${errorMessage}\n\nVeuillez vérifier la clé API et la configuration Vercel.`);
         } finally {
             setIsAnalyzing(false);
         }
