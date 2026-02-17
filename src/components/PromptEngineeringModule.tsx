@@ -33,7 +33,9 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
             part3_p2: '',
             part3_p3: '',
             status: 'pending', // pending, submitted, passed, failed
-            submittedAt: null as string | null
+            submittedAt: null as string | null,
+            feedback: '',
+            score: null as number | null
         }
     });
     const [activity2Validated, setActivity2Validated] = useState(false);
@@ -374,10 +376,19 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
                                 <h3 className="text-4xl font-black uppercase italic text-green-500 mb-4 tracking-tighter">
                                     CONGRATULATIONS_AGENT
                                 </h3>
-                                <p className="text-foreground/80 text-sm mb-8 max-w-lg mx-auto">
-                                    L'administrateur a validé votre examen final. Vous avez démontré une maîtrise exceptionnelle du Prompt Engineering.
-                                </p>
-                                <div className="text-6xl mb-8">🎓</div>
+                                <div className="text-6xl mb-6">🎓</div>
+                                <div className="bg-black/40 p-6 border border-green-500/20 mb-8 text-left max-w-2xl mx-auto backdrop-blur-md">
+                                    <h4 className="text-green-500 font-black uppercase text-[10px] tracking-[0.3em] mb-4 border-b border-green-500/10 pb-2">Feedback de l'Instructeur</h4>
+                                    <p className="text-foreground/90 text-sm italic font-mono leading-relaxed whitespace-pre-wrap">
+                                        {responses.quiz?.feedback || "Félicitations pour votre réussite ! Vous avez démontré une maîtrise exceptionnelle du Prompt Engineering."}
+                                    </p>
+                                    {responses.quiz?.score && (
+                                        <div className="mt-4 flex items-center gap-2">
+                                            <span className="text-[10px] text-green-500/50 font-mono uppercase">Score_Final:</span>
+                                            <span className="text-green-500 font-black text-xl">{responses.quiz.score}%</span>
+                                        </div>
+                                    )}
+                                </div>
                                 <button
                                     onClick={onComplete}
                                     className="bg-green-500 text-background px-12 py-4 font-black uppercase text-xs tracking-[0.3em] hover:scale-105 transition-all shadow-[0_0_30px_rgba(34,197,94,0.3)]"
@@ -392,27 +403,36 @@ export default function PromptEngineeringModule({ userId, onBack, onComplete }: 
                                 <h3 className="text-4xl font-black uppercase italic text-red-500 mb-4 tracking-tighter">
                                     MISSION_FAILED
                                 </h3>
-                                <p className="text-foreground/80 text-sm mb-8 max-w-lg mx-auto">
+                                <p className="text-foreground/80 text-sm mb-8 max-w-lg mx-auto italic">
                                     "Oops, nice try il va falloir faire plus d'effort..."
                                 </p>
-                                <div className="text-left max-w-2xl mx-auto bg-black/40 p-6 border border-white/5 mb-8 text-xs space-y-4">
-                                    <h4 className="text-neon font-bold uppercase border-b border-white/10 pb-2 mb-4">CORRECTIF & EXPLICATION</h4>
 
-                                    <div className="space-y-2">
-                                        <p className="font-bold text-red-400">Q1 : C</p>
-                                        <p className="text-foreground/60">Le rôle imposé (System Prompt) influence directement le ton, le vocabulaire et la posture.</p>
+                                <div className="text-left max-w-2xl mx-auto bg-black/40 p-8 border border-red-500/20 mb-8 text-xs space-y-6 backdrop-blur-md">
+                                    <div>
+                                        <h4 className="text-red-500 font-black uppercase text-[10px] tracking-[0.3em] border-b border-red-500/10 pb-2 mb-4">Feedback Personnalisé</h4>
+                                        <p className="text-foreground/90 font-mono italic leading-relaxed whitespace-pre-wrap bg-red-500/5 p-4 border-l-2 border-red-500">
+                                            {responses.quiz?.feedback || "Votre soumission a été examinée et n'a pas atteint les critères requis pour ce module."}
+                                        </p>
+                                        {responses.quiz?.score && (
+                                            <div className="mt-4 flex items-center gap-2">
+                                                <span className="text-[10px] text-red-500/50 font-mono uppercase">Score_Attribué:</span>
+                                                <span className="text-red-500 font-black text-xl">{responses.quiz.score}%</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
-                                        <p className="font-bold text-red-400">Q2 : C</p>
-                                        <p className="text-foreground/60">Le Chain-of-Thought externalise les étapes intermédiaires du raisonnement.</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="font-bold text-red-400">Q3 : B</p>
-                                        <p className="text-foreground/60">Le prompt injection vise à faire ignorer ou contourner les règles initiales.</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="font-bold text-red-400">Questions Ouvertes</p>
-                                        <p className="text-foreground/60">Pour Q4, il fallait mentionner l'importance du contexte et des contraintes. Pour Q5, l'hallucination vient souvent d'un manque de contexte, pas juste de l'entraînement.</p>
+
+                                    <div>
+                                        <h4 className="text-neon font-black uppercase text-[10px] tracking-[0.3em] border-b border-white/10 pb-2 mb-4">Correctifs & Recommandations</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <p className="font-bold text-neon/80 text-[10px]">Q1, Q2, Q3 (Concepts)</p>
+                                                <p className="text-foreground/50 text-[10px]">Révisez les chapitres sur le System Prompt et le Chain-of-Thought (CoT). Les réponses attendues étaient C, C, B.</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="font-bold text-neon/80 text-[10px]">Questions Ouvertes & Prompts</p>
+                                                <p className="text-foreground/50 text-[10px]">Assurez-vous d'inclure des contraintes explicites et un rôle clair dans chaque prompt produit.</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

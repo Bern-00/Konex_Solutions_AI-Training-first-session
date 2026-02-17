@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, BookOpen, RotateCcw, ChevronRight, BarChart3, Search, UserCheck, MessageSquare, Clock } from 'lucide-react';
 import { getAllStudentsProgress, resetStudentAttempts, saveActivityProgress } from '@/lib/progress';
 import { getMessages, markMessageAsRead } from '@/lib/messages';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface StudentProgress {
     id: string;
@@ -60,6 +61,9 @@ export default function AdminDashboard() {
     const [selectedStudent, setSelectedStudent] = useState<StudentProgress | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [activeTab, setActiveTab] = useState<'students' | 'messages'>('students');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [suggestedFeedback, setSuggestedFeedback] = useState('');
+    const [suggestedScore, setSuggestedScore] = useState<number | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -108,23 +112,87 @@ export default function AdminDashboard() {
                 ...selectedStudent.activity_metadata.responses,
                 quiz: {
                     ...selectedStudent.activity_metadata.responses.quiz,
-                    status: status
+                    status: status,
+                    feedback: suggestedFeedback, // On enregistre le feedback (AI ou modifié par l'admin)
+                    score: suggestedScore
                 }
             };
 
             // Module 2 = ID 2, Chapter 11
             await saveActivityProgress(userId, 2, 11, selectedStudent.activity_metadata.step, updatedResponses);
 
-            // Si passed, on marque aussi le module comme complété au niveau user_progress si ce n'est pas fait?
-            // Le PromptEngineeringModule le fait déjà au step 5, mais on peut renforcer ici.
-            // Pour l'instant on juste update le status du quiz.
-
             alert(`Quiz marqué comme ${status.toUpperCase()}`);
-            fetchData(); // Refresh data
+            fetchData();
             setSelectedStudent(null);
+            setSuggestedFeedback('');
+            setSuggestedScore(null);
         } catch (e) {
             console.error("Erreur grading:", e);
             alert("Erreur lors de la notation.");
+        }
+    }
+
+    async function analyzeWithAI() {
+        if (!selectedStudent || !selectedStudent.activity_metadata) return;
+
+        setIsAnalyzing(true);
+        try {
+            const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+            const responses = selectedStudent.activity_metadata.responses;
+            const quiz = responses.quiz;
+
+            const prompt = `
+                Tu es un expert en Prompt Engineering et tu corriges l'examen final d'un étudiant.
+                
+                Voici les réponses de l'étudiant :
+                ---
+                PARTIE 1:
+                Prompt A (Extraction vs Résumé): ${quiz.part1_A}
+                Prompt B (Classification vs Sentiment): ${quiz.part1_B}
+                
+                PARTIE 2 (QCM):
+                Q1: ${quiz.part2_q1} (Réponse attendue: C)
+                Q2: ${quiz.part2_q2} (Réponse attendue: C)
+                Q3: ${quiz.part2_q3} (Réponse attendue: B)
+                Q4: ${quiz.part2_q4}
+                Q5: ${quiz.part2_q5}
+                
+                PARTIE 3 (Production de Prompts):
+                Prompt 1: ${quiz.part3_p1}
+                Prompt 2: ${quiz.part3_p2}
+                Prompt 3: ${quiz.part3_p3}
+                ---
+                
+                Consignes de correction:
+                1. Q1, Q2, Q3 sont sur 10 points chacune.
+                2. Les questions ouvertes et les prompts produits doivent être évalués sur la précision technique, le respect des contraintes et la clarté.
+                3. Donne un score total sur 100.
+                4. Rédige un feedback constructif et premium en français. Sois encourageant mais exigeant sur les concepts de Prompt Engineering (System Prompt, CoT, etc.).
+                
+                IMPORTANT: Réponds UNIQUEMENT au format JSON comme suit:
+                {
+                  "score": 85,
+                  "feedback": "Texte du feedback ici..."
+                }
+            `;
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
+
+            // Nettoyer le JSON si nécessaire (certains modèles ajoutent des backticks)
+            const jsonStr = text.replace(/```json|```/g, '').trim();
+            const analysis = JSON.parse(jsonStr);
+
+            setSuggestedScore(analysis.score);
+            setSuggestedFeedback(analysis.feedback);
+        } catch (error) {
+            console.error("AI Analysis Error:", error);
+            alert("Erreur lors de l'analyse AI. Vérifiez la clé API.");
+        } finally {
+            setIsAnalyzing(false);
         }
     }
 
@@ -133,8 +201,8 @@ export default function AdminDashboard() {
         (s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const calculateOverallProgress = (progress: StudentProgress['user_progress']) => {
-        const completed = progress.filter(p => p.completed).length;
+    const calculateOverallProgress = (progress: any[]) => {
+        const completed = progress.filter((p: any) => p.completed).length;
         return Math.min(Math.round((completed / 25) * 100), 100);
     };
 
@@ -161,9 +229,9 @@ export default function AdminDashboard() {
                         className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest border transition-all relative ${activeTab === 'messages' ? 'bg-neon text-background border-neon' : 'bg-neon/5 text-neon border-neon/20 hover:bg-neon/10'}`}
                     >
                         Messages
-                        {messages.filter(m => !m.is_read).length > 0 && (
+                        {messages.filter((m: any) => !m.is_read).length > 0 && (
                             <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[8px] text-white animate-pulse">
-                                {messages.filter(m => !m.is_read).length}
+                                {messages.filter((m: any) => !m.is_read).length}
                             </span>
                         )}
                     </button>
@@ -215,7 +283,7 @@ export default function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredStudents.map((student) => (
+                                        {filteredStudents.map((student: any) => (
                                             <tr
                                                 key={student.id}
                                                 onClick={() => setSelectedStudent(student)}
@@ -270,7 +338,7 @@ export default function AdminDashboard() {
                                         <BookOpen size={14} /> Progression_Détaillée
                                     </h4>
                                     <div className="space-y-4">
-                                        {selectedStudent.user_progress.map((p, idx) => (
+                                        {selectedStudent.user_progress.map((p: any, idx: number) => (
                                             <div key={idx} className="flex justify-between items-center p-4 border border-neon/10 bg-neon/5 rounded">
                                                 <div>
                                                     <p className="text-xs font-bold text-foreground">Chapitre_{p.chapter_id % 100}</p>
@@ -292,8 +360,8 @@ export default function AdminDashboard() {
                                     <BarChart3 size={40} className="text-neon/30 mb-4" />
                                     <h4 className="text-sm font-bold uppercase tracking-widest text-neon mb-2">Performance_Analytique</h4>
                                     <p className="text-[10px] font-mono opacity-60 leading-relaxed">
-                                        L'étudiant a complété {selectedStudent.user_progress.filter(p => p.completed).length} unités.<br />
-                                        Score moyen: {selectedStudent.user_progress.length > 0 ? Math.round(selectedStudent.user_progress.reduce((acc, p) => acc + (p.score || 0), 0) / selectedStudent.user_progress.length) : 0}%
+                                        L'étudiant a complété {selectedStudent.user_progress.filter((p: any) => p.completed).length} unités.<br />
+                                        Score moyen: {selectedStudent.user_progress.length > 0 ? Math.round(selectedStudent.user_progress.reduce((acc: number, p: any) => acc + (p.score || 0), 0) / selectedStudent.user_progress.length) : 0}%
                                     </p>
                                 </div>
                             </div>
@@ -392,19 +460,59 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex gap-4 justify-center">
-                                                    <button
-                                                        onClick={() => handleGradeQuiz(selectedStudent.id, 'failed')}
-                                                        className="px-8 py-4 bg-red-500 text-white font-black uppercase text-xs tracking-widest hover:bg-red-600 shadow-lg shadow-red-500/20"
-                                                    >
-                                                        REJETER (FAIL)
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleGradeQuiz(selectedStudent.id, 'passed')}
-                                                        className="px-8 py-4 bg-green-500 text-white font-black uppercase text-xs tracking-widest hover:bg-green-600 shadow-lg shadow-green-500/20"
-                                                    >
-                                                        VALIDER (PASS)
-                                                    </button>
+                                                <div className="mt-8 border-t border-neon/30 pt-8">
+                                                    <div className="flex justify-between items-center mb-6">
+                                                        <h5 className="text-sm font-black uppercase text-neon tracking-widest flex items-center gap-2">
+                                                            <BarChart3 size={16} /> AUTO-CORRECTION AI
+                                                        </h5>
+                                                        <button
+                                                            onClick={analyzeWithAI}
+                                                            disabled={isAnalyzing}
+                                                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${isAnalyzing ? 'bg-neon/10 text-neon/40 border-neon/10 cursor-not-allowed' : 'bg-neon text-background border-neon hover:scale-105'}`}
+                                                        >
+                                                            {isAnalyzing ? 'ANALYSE_EN_COURS...' : 'GÉNÉRER ANALYSE AI'}
+                                                        </button>
+                                                    </div>
+
+                                                    {(suggestedScore !== null || suggestedFeedback) && (
+                                                        <div className="space-y-6 animate-in fade-in slide-in-from-top-4">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="text-[10px] font-mono text-neon opacity-60">SCORE_SUGGÉRÉ:</div>
+                                                                <input
+                                                                    type="number"
+                                                                    value={suggestedScore || 0}
+                                                                    onChange={(e) => setSuggestedScore(parseInt(e.target.value))}
+                                                                    className="bg-neon/10 border border-neon/20 p-2 text-xl font-black text-neon w-24 text-center"
+                                                                />
+                                                                <span className="text-neon/50 text-xl font-black">/ 100</span>
+                                                            </div>
+
+                                                            <div className="space-y-2">
+                                                                <div className="text-[10px] font-mono text-neon opacity-60 uppercase tracking-widest">Feedback_Constructif (Modifiable)</div>
+                                                                <textarea
+                                                                    value={suggestedFeedback}
+                                                                    onChange={(e) => setSuggestedFeedback(e.target.value)}
+                                                                    className="w-full h-40 bg-black/40 border border-neon/20 p-4 text-xs font-mono text-foreground focus:border-neon outline-none"
+                                                                    placeholder="L'IA génère un feedback ici..."
+                                                                />
+                                                            </div>
+
+                                                            <div className="flex gap-4 justify-center pt-4">
+                                                                <button
+                                                                    onClick={() => handleGradeQuiz(selectedStudent.id, 'failed')}
+                                                                    className="px-8 py-4 bg-red-500 text-white font-black uppercase text-xs tracking-widest hover:bg-red-600 shadow-lg shadow-red-500/20"
+                                                                >
+                                                                    REJETER (FAIL)
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleGradeQuiz(selectedStudent.id, 'passed')}
+                                                                    className="px-8 py-4 bg-green-500 text-white font-black uppercase text-xs tracking-widest hover:bg-green-600 shadow-lg shadow-green-500/20"
+                                                                >
+                                                                    VALIDER (PASS)
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -432,7 +540,7 @@ export default function AdminDashboard() {
                         <MessageSquare className="text-neon" /> Inbox_Feedback
                     </h3>
                     <div className="grid grid-cols-1 gap-4">
-                        {messages.map((msg) => (
+                        {messages.map((msg: any) => (
                             <div key={msg.id} className={`p-6 border transition-all ${msg.is_read ? 'bg-card-bg/50 border-neon/10 opacity-70' : 'bg-card-bg border-neon/30 border-l-4 border-l-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.05)]'}`}>
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
