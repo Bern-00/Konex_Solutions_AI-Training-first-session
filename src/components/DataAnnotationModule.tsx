@@ -315,11 +315,14 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div className="border-l-2 border-neon pl-4">
                                 <h3 className="text-neon font-black uppercase text-sm tracking-widest">Tâche 2.1 – Dense Captioning & Piège Cognitif</h3>
                             </div>
-                            <div className="bg-black/40 p-8 text-center border border-dashed border-neon/20">
-                                <div className="text-neon/30 flex flex-col items-center gap-2">
-                                    <ImageIcon size={48} />
-                                    <p className="text-[10px] uppercase tracking-widest italic">[ SCENE_VISUAL_RECONSTRUCTION_REQUIRED ]</p>
-                                    <p className="text-xs text-foreground/40 mt-4 max-w-md"> Rue : 2 voitures, 3 personnes, panneau "STOP", chien, reflet vitrine. Une personne porte un t-shirt : <span className="text-neon font-bold">“Free dom”</span></p>
+                            <div className="bg-black/40 p-0 text-center border border-dashed border-neon/20 overflow-hidden group">
+                                <img
+                                    src="/images/task_dense_captioning.jpg"
+                                    alt="Task Scene"
+                                    className="w-full h-auto grayscale group-hover:grayscale-0 transition-all duration-700"
+                                />
+                                <div className="p-4 border-t border-neon/10">
+                                    <p className="text-[10px] uppercase tracking-[0.2em] italic text-neon/40">[ ANALYSE_VISUELLE_SÉCURISÉE ]</p>
                                 </div>
                             </div>
                             <textarea
