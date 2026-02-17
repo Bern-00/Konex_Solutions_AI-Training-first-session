@@ -169,6 +169,41 @@ export default function AdminDashboard() {
         }
     }
 
+    async function handleForceUnlock(userId: string) {
+        if (!confirm("Voulez-vous forcer l'accès au Module 3 pour cet étudiant ? Cela marquera le Module 2 comme complété.")) return;
+
+        try {
+            const supabase = createClient();
+            // On insère une complétion fictive pour le Module 2 (Chapter 11)
+            // Cela débloquera automatiquement le Module 3 dans page.tsx (isModuleCompleted(2) deviendra true)
+            await saveActivityProgress(userId, 2, 11, 4, {
+                quiz: {
+                    status: 'passed',
+                    score: 100,
+                    feedback: "ACCÈS_SPÉCIAL_ADMIN_ACCORDÉ",
+                    submittedAt: new Date().toISOString()
+                }
+            });
+
+            // On s'assure aussi que le chapitre est marqué comme complété dans la table user_progress (pour les stats)
+            await supabase.from('user_progress').upsert({
+                user_id: userId,
+                chapter_id: 11,
+                module_id: 2,
+                completed: true,
+                score: 100,
+                completed_at: new Date().toISOString()
+            }, { onConflict: 'user_id,chapter_id' });
+
+            alert("Accès spécial accordé. Le Module 3 est maintenant déverrouillé pour cet étudiant.");
+            fetchData();
+            setSelectedStudent(null);
+        } catch (e) {
+            console.error("Erreur force unlock:", e);
+            alert("Erreur lors de l'attribution de l'accès spécial.");
+        }
+    }
+
     async function analyzeWithAI() {
         if (!selectedStudent || !selectedStudent.activity_metadata) return;
 
@@ -421,12 +456,20 @@ export default function AdminDashboard() {
                                     <h3 className="text-2xl font-black uppercase text-foreground">{selectedStudent.full_name || selectedStudent.email}</h3>
                                     <p className="text-xs font-mono text-neon opacity-60">// {selectedStudent.email}</p>
                                 </div>
-                                <button
-                                    onClick={() => setSelectedStudent(null)}
-                                    className="bg-neon/10 text-neon px-4 py-2 text-[10px] font-mono border border-neon/20 hover:bg-neon/20"
-                                >
-                                    FERMER_DETAIL
-                                </button>
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => handleForceUnlock(selectedStudent.id)}
+                                        className="bg-yellow-500/20 text-yellow-500 px-4 py-2 text-[10px] font-black border border-yellow-500/50 hover:bg-yellow-500 hover:text-background transition-all flex items-center gap-2"
+                                    >
+                                        <ShieldAlert size={12} /> ACCÈS_SPÉCIAL
+                                    </button>
+                                    <button
+                                        onClick={() => setSelectedStudent(null)}
+                                        className="bg-neon/10 text-neon px-4 py-2 text-[10px] font-mono border border-neon/20 hover:bg-neon/20"
+                                    >
+                                        FERMER_DETAIL
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
