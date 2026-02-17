@@ -82,6 +82,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
 
     // AUTOSAVE EFFECT
     useEffect(() => {
+        // IMPORTANT: Prevent autosave during initial load or if no data
         if (isInitialLoading || !userId) return;
 
         const timer = setTimeout(async () => {
@@ -95,10 +96,10 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                 console.error("Autosave error:", err);
                 setSaveStatus('Autosave Error');
             }
-        }, 3000);
+        }, 5000); // 5 seconds wait to avoid rapid fire
 
         return () => clearTimeout(timer);
-    }, [responses, userId]);
+    }, [responses, currentSection, userId, isInitialLoading]);
 
     useEffect(() => {
         if (userId) {
@@ -109,18 +110,25 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
     const loadSavedProgress = async () => {
         if (!userId) return;
         setIsInitialLoading(true);
+        console.log("Loading progress for user:", userId);
         try {
             const savedData = await getActivityProgress(userId, 31);
             if (savedData) {
+                console.log("Saved data found:", savedData);
                 if (savedData.step) setCurrentSection(savedData.step);
                 if (savedData.responses) {
-                    setResponses(prev => ({ ...prev, ...savedData.responses }));
+                    setResponses(savedData.responses);
                 }
+            } else {
+                console.log("No saved data found for chapter 31");
             }
         } catch (err: any) {
             console.error("Error loading progress:", err);
         } finally {
-            setIsInitialLoading(false);
+            // Give React a moment to process setResponses before enabling autosave
+            setTimeout(() => {
+                setIsInitialLoading(false);
+            }, 500);
         }
     };
 
@@ -376,8 +384,15 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
 
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {[1, 2, 3, 4].map(idx => (
-                                    <div key={idx} className="aspect-square bg-black/40 border border-white/5 flex items-center justify-center p-4 text-center">
-                                        <p className="text-[10px] uppercase opacity-30">Image_{idx}</p>
+                                    <div key={idx} className="aspect-[2/3] bg-black/40 border border-neon/10 overflow-hidden relative group">
+                                        <img
+                                            src={`/images/task_prompt_${idx}.jpg`}
+                                            alt={`Génération ${idx}`}
+                                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                                        />
+                                        <div className="absolute top-2 left-2 bg-black/80 px-2 py-1 border border-neon/30">
+                                            <p className="text-[8px] font-black text-neon">N°{idx}</p>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
