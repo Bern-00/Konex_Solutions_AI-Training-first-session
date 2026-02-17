@@ -138,7 +138,7 @@ export default function AdminDashboard() {
         setIsAnalyzing(true);
         try {
             const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const responses = selectedStudent.activity_metadata.responses;
             const quiz = responses.quiz;
