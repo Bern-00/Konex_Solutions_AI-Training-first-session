@@ -13,6 +13,7 @@ import { getCurrentUser, signOut, getUserProfile } from '@/lib/supabase/auth';
 import { getUserProgress } from '@/lib/progress';
 import { createClient } from '@/lib/supabase/client'; // ADDED
 import PromptEngineeringModule from '@/components/PromptEngineeringModule';
+import DataAnnotationModule from '@/components/DataAnnotationModule';
 
 // INTERFACES STRICTES
 interface ModuleCardProps {
@@ -46,7 +47,7 @@ interface UserProgress {
 export default function Dashboard() {
   const router = useRouter();
 
-  const [activeView, setActiveView] = useState<'grid' | 'annotation' | 'module-1' | 'module-2' | 'module-4' | 'module-5' | 'admin'>('grid');
+  const [activeView, setActiveView] = useState<'grid' | 'annotation' | 'module-1' | 'module-2' | 'module-3' | 'module-4' | 'module-5' | 'admin'>('grid');
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -298,8 +299,8 @@ export default function Dashboard() {
             <ModuleCard title="Introduction to LLMs" description="Basics of Large Language Models" order={1} seqId="7273e6" onStart={() => setActiveView('module-1')} />
             {/* Prompt Engineering (Module 2) depends on Intro (ID 2) */}
             <ModuleCard title="Prompt Engineering" description="Advanced AI interaction" order={2} seqId="6c76e8" locked={!isModuleCompleted(2)} onStart={() => setActiveView('module-2')} />
-            {/* Data Annotation (Module 3) depends on Prompt (ID 4) */}
-            <ModuleCard title="Data Annotation" description="Hands-on labeling for AI" order={3} seqId="596001" onStart={() => setActiveView('annotation')} locked={!isModuleCompleted(4)} />
+            {/* Data Annotation (Module 3) depends on Prompt (ID 2) */}
+            <ModuleCard title="Data Annotation" description="Hands-on labeling for AI" order={3} seqId="596001" onStart={() => setActiveView('module-3')} locked={!isModuleCompleted(2)} />
             {/* Model Evaluation (Module 4) depends on Annotation (ID 5) */}
             <ModuleCard title="Model Evaluation" description="Testing and validating AI systems" order={4} seqId="b2c3d4" locked={!isModuleCompleted(5)} onStart={() => setActiveView('module-4')} />
             {/* Final Assessment (Module 5) depends on Model Eval (ID 6) */}
@@ -352,6 +353,16 @@ export default function Dashboard() {
             )}
             {activeView === 'admin' && (
               <AdminDashboard />
+            )}
+            {activeView === 'module-3' && user && (
+              <DataAnnotationModule
+                userId={user.id}
+                onBack={() => setActiveView('grid')}
+                onComplete={() => {
+                  setActiveView('grid');
+                  checkUser();
+                }}
+              />
             )}
             {activeView === 'annotation' && (
               <AnnotationTask onBack={() => setActiveView('grid')} />
