@@ -137,8 +137,12 @@ export async function getAllStudentsProgress() {
     .filter(p => p.email?.toLowerCase() !== adminEmail && p.is_admin !== true)
     .map(profile => {
       const userProg = progress.filter(pr => pr.user_id === profile.id);
-      // Extraire les métadonnées d'activité si elles existent (chapitre 11 pour Module 2)
-      const activityData = userProg.find(pr => pr.chapter_id === 11)?.metadata || null;
+      // Extraire les métadonnées d'activité les plus pertinentes
+      // On priorise Module 3 (Chapter 16) puis Module 2 (Chapter 11)
+      const m3Progress = userProg.find(pr => pr.chapter_id === 16);
+      const m2Progress = userProg.find(pr => pr.chapter_id === 11);
+
+      const activityData = (m3Progress?.metadata || m2Progress?.metadata || null) as any;
 
       return {
         ...profile,
