@@ -131,8 +131,19 @@ export default function AdminDashboard() {
             let moduleId = 2; // Default Module 2
             let chapterId = 11;
 
-            if (responses.exam) {
-                // It's Module 3
+            if (responses.section1 && responses.section3) {
+                // Module 4: Model Evaluation
+                const m4Prog = selectedStudent.user_progress.find((p: any) => p.module_id === 6);
+                moduleId = m4Prog?.module_id || 6;
+                chapterId = m4Prog?.chapter_id || 21;
+                updatedResponses = {
+                    ...responses,
+                    status: status,
+                    feedback: suggestedFeedback,
+                    score: suggestedScore
+                };
+            } else if (responses.exam) {
+                // Module 3: Data Annotation
                 moduleId = 5;
                 chapterId = 16;
                 updatedResponses = {
@@ -144,8 +155,10 @@ export default function AdminDashboard() {
                         score: suggestedScore
                     }
                 };
-            } else {
-                // It's Module 2
+            } else if (responses.quiz) {
+                // Module 2: Prompt Engineering
+                moduleId = 2;
+                chapterId = 11;
                 updatedResponses = {
                     ...responses,
                     quiz: {
@@ -283,16 +296,43 @@ export default function AdminDashboard() {
                 prompt = `
                     Tu es un expert en Data Annotation et RLHF (Niveau Expert Senior). 
                     TON RÔLE : Évaluer sans pitié la qualité du travail d'un candidat. Tu dois être froid, technique et extrêmement exigeant.
-                    CRITÈRES : Précision factuelle absolue, respect total des contraintes, finesse de l'analyse.
+                    CRITÈRES : Précision factuelle absolue, respect total des contraintes, finesse de l'analyse, qualité de la localisation et de l'improvisation audio.
                     
                     TRAVAUX DE L'ÉTUDIANT :
-                    SECTION 1.1 (Ranking) : Note A: ${s1.t1_1_ratingA}, Note B: ${s1.t1_1_ratingB}, Choix: ${s1.t1_1_best}, Justification: ${s1.t1_1_justification}
-                    SECTION 5.1 (Instruction Following) : Poème (doit faire 4 lignes, 7 mots/ligne, NO letter 'a'): ${s5.t5_1_poem}
-                    EXAMEN FINAL : Issues A: ${exam.part1_a_issues}, Issues B: ${exam.part1_b_issues}, Justification: ${exam.part2_justification}
-                    
-                    CONSIGNE : Si le poème en 5.1 ne respecte pas STRICTEMENT les contraintes (4 lignes, 7 mots, pas de 'a'), le score global doit être sévèrement pénalisé.
-                    Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
                 `;
+
+                if (responses.section1 && responses.section3) {
+                    const s1 = responses.section1;
+                    const s2 = responses.section2;
+                    const s3 = responses.section3;
+                    prompt += `
+                        SECTION 1 (SbS Evaluation) : 
+                        Grille Modèle A: ${JSON.stringify(s1.gradingA)}
+                        Grille Modèle B: ${JSON.stringify(s1.gradingB)}
+                        
+                        SECTION 2 (Localization) :
+                        Traduction UK->CA: ${s2.exo2a.translation}
+                        Traduction US->FR: ${s2.exo2b.translation}
+                        
+                        SECTION 3 (Audio Role) : ${s3.randomPrompt}
+                        (L'audio a été enregistré dans les deux langues).
+                        
+                        CONSIGNE : Évalue la pertinence des critères SbS et la qualité des localisations (termes politiques au Québec, termes de consommation en France).
+                        Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
+                    `;
+                } else {
+                    const s1 = responses.section1;
+                    const s5 = responses.section5;
+                    const exam = responses.exam;
+                    prompt += `
+                        SECTION 1.1 (Ranking) : Note A: ${s1.t1_1_ratingA}, Note B: ${s1.t1_1_ratingB}, Choix: ${s1.t1_1_best}, Justification: ${s1.t1_1_justification}
+                        SECTION 5.1 (Instruction Following) : Poème (doit faire 4 lignes, 7 mots/ligne, NO letter 'a'): ${s5.t5_1_poem}
+                        EXAMEN FINAL : Issues A: ${exam.part1_a_issues}, Issues B: ${exam.part1_b_issues}, Justification: ${exam.part2_justification}
+                        
+                        CONSIGNE : Si le poème en 5.1 ne respecte pas STRICTEMENT les contraintes (4 lignes, 7 mots, pas de 'a'), le score global doit être sévèrement pénalisé.
+                        Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
+                    `;
+                }
             } else if (responses.quiz) {
                 prompt = `Évaluation stricte du Quiz Module 2 (Prompt Engineering). Analyse la pertinence technique : ${JSON.stringify(responses.quiz)}. Réponds en JSON uniquement : {"score": number, "feedback": "..."}`;
             }
@@ -417,7 +457,54 @@ export default function AdminDashboard() {
                                 <div className="mt-12 pt-10 border-t border-neon/20">
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neon mb-8 flex items-center gap-2"><Brain size={14} /> Travaux_Expert_Analyse</h4>
                                     <div className="grid grid-cols-1 gap-6">
-                                        {selectedStudent.activity_metadata.responses.section1 && (
+                                        {/* SECTION 4: MODEL EVALUATION (NEW) */}
+                                        {selectedStudent.activity_metadata.responses.section3 && (
+                                            <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
+                                                <div className="border-l-2 border-neon pl-4"><h4 className="text-neon font-black uppercase text-sm tracking-widest">M04: Model Evaluation Protocol</h4></div>
+
+                                                {/* SbS Recap */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="bg-neon/5 border border-neon/20 p-4">
+                                                        <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_A</h5>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses.section1.gradingA, null, 2)}</pre>
+                                                    </div>
+                                                    <div className="bg-neon/5 border border-neon/20 p-4">
+                                                        <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_B</h5>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses.section1.gradingB, null, 2)}</pre>
+                                                    </div>
+                                                </div>
+
+                                                {/* Localization Recap */}
+                                                <div className="space-y-4">
+                                                    <div className="p-4 bg-black/40 border border-white/5">
+                                                        <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.1 (Fr_CA) :</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses.section2.exo2a.translation}</p>
+                                                    </div>
+                                                    <div className="p-4 bg-black/40 border border-white/5">
+                                                        <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.2 (Fr_FR) :</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses.section2.exo2b.translation}</p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Audio Recordings */}
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="p-4 bg-blue-500/10 border border-blue-500/20">
+                                                        <p className="text-[8px] font-black text-blue-500 uppercase mb-2">Recording_EN</p>
+                                                        {selectedStudent.activity_metadata.responses.section3.audioEn ? (
+                                                            <audio src={selectedStudent.activity_metadata.responses.section3.audioEn} controls className="w-full h-8" />
+                                                        ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
+                                                    </div>
+                                                    <div className="p-4 bg-orange-500/10 border border-orange-500/20">
+                                                        <p className="text-[8px] font-black text-orange-500 uppercase mb-2">Recording_FR</p>
+                                                        {selectedStudent.activity_metadata.responses.section3.audioFr ? (
+                                                            <audio src={selectedStudent.activity_metadata.responses.section3.audioFr} controls className="w-full h-8" />
+                                                        ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedStudent.activity_metadata.responses.section1 && !selectedStudent.activity_metadata.responses.section3 && (
                                             <div className="p-6 bg-neon/5 border border-neon/10">
                                                 <p className="text-[10px] text-neon font-black uppercase tracking-widest mb-4">Module 3: Data Annotation</p>
                                                 <div className="grid grid-cols-2 gap-4 text-xs">

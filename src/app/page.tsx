@@ -14,6 +14,7 @@ import { getUserProgress } from '@/lib/progress';
 import { createClient } from '@/lib/supabase/client'; // ADDED
 import PromptEngineeringModule from '@/components/PromptEngineeringModule';
 import DataAnnotationModule from '@/components/DataAnnotationModule';
+import ModelEvaluationModule from '@/components/ModelEvaluationModule';
 
 // INTERFACES STRICTES
 interface ModuleCardProps {
@@ -330,8 +331,7 @@ export default function Dashboard() {
               />
             )}
             {activeView === 'module-4' && user && (
-              <ChapterView
-                moduleSlug="model-evaluation"
+              <ModelEvaluationModule
                 userId={user.id}
                 onBack={() => setActiveView('grid')}
                 onComplete={() => {
