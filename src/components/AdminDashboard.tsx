@@ -458,7 +458,7 @@ export default function AdminDashboard() {
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neon mb-8 flex items-center gap-2"><Brain size={14} /> Travaux_Expert_Analyse</h4>
                                     <div className="grid grid-cols-1 gap-6">
                                         {/* SECTION 4: MODEL EVALUATION (NEW) */}
-                                        {selectedStudent.activity_metadata.responses.section3 && (
+                                        {selectedStudent.activity_metadata.responses?.section3 && (
                                             <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
                                                 <div className="border-l-2 border-neon pl-4"><h4 className="text-neon font-black uppercase text-sm tracking-widest">M04: Model Evaluation Protocol</h4></div>
 
@@ -466,11 +466,11 @@ export default function AdminDashboard() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="bg-neon/5 border border-neon/20 p-4">
                                                         <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_A</h5>
-                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses.section1.gradingA, null, 2)}</pre>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses?.section1?.gradingA, null, 2)}</pre>
                                                     </div>
                                                     <div className="bg-neon/5 border border-neon/20 p-4">
                                                         <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_B</h5>
-                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses.section1.gradingB, null, 2)}</pre>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses?.section1?.gradingB, null, 2)}</pre>
                                                     </div>
                                                 </div>
 
@@ -478,11 +478,11 @@ export default function AdminDashboard() {
                                                 <div className="space-y-4">
                                                     <div className="p-4 bg-black/40 border border-white/5">
                                                         <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.1 (Fr_CA) :</p>
-                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses.section2.exo2a.translation}</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses?.section2?.exo2a?.translation || 'N/A'}</p>
                                                     </div>
                                                     <div className="p-4 bg-black/40 border border-white/5">
                                                         <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.2 (Fr_FR) :</p>
-                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses.section2.exo2b.translation}</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses?.section2?.exo2b?.translation || 'N/A'}</p>
                                                     </div>
                                                 </div>
 
@@ -490,13 +490,13 @@ export default function AdminDashboard() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="p-4 bg-blue-500/10 border border-blue-500/20">
                                                         <p className="text-[8px] font-black text-blue-500 uppercase mb-2">Recording_EN</p>
-                                                        {selectedStudent.activity_metadata.responses.section3.audioEn ? (
+                                                        {selectedStudent.activity_metadata.responses?.section3?.audioEn ? (
                                                             <audio src={selectedStudent.activity_metadata.responses.section3.audioEn} controls className="w-full h-8" />
                                                         ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
                                                     </div>
                                                     <div className="p-4 bg-orange-500/10 border border-orange-500/20">
                                                         <p className="text-[8px] font-black text-orange-500 uppercase mb-2">Recording_FR</p>
-                                                        {selectedStudent.activity_metadata.responses.section3.audioFr ? (
+                                                        {selectedStudent.activity_metadata.responses?.section3?.audioFr ? (
                                                             <audio src={selectedStudent.activity_metadata.responses.section3.audioFr} controls className="w-full h-8" />
                                                         ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
                                                     </div>
@@ -504,23 +504,21 @@ export default function AdminDashboard() {
                                             </div>
                                         )}
 
-                                        {selectedStudent.activity_metadata.responses.section1 && !selectedStudent.activity_metadata.responses.section3 && (
+                                        {selectedStudent.activity_metadata.responses?.section1 && !selectedStudent.activity_metadata.responses?.section3 && (
                                             <div className="p-6 bg-neon/5 border border-neon/10">
                                                 <p className="text-[10px] text-neon font-black uppercase tracking-widest mb-4">Module 3: Data Annotation</p>
-                                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                                    <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Justification Ranking</p><p>{selectedStudent.activity_metadata.responses.section1.t1_1_justification}</p></div>
-                                                    <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Détection Hallucinations</p><p>{selectedStudent.activity_metadata.responses.section1.t1_2_errors}</p></div>
-                                                </div>
+                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Justification Ranking</p><p>{selectedStudent.activity_metadata.responses?.section1?.t1_1_justification}</p></div>
+                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Détection Hallucinations</p><p>{selectedStudent.activity_metadata.responses?.section1?.t1_2_errors}</p></div>
                                             </div>
                                         )}
                                         {selectedStudent.activity_metadata.responses.exam?.status === 'submitted' && (
                                             <div className="p-6 bg-neon/10 border border-neon pt-8 mt-8">
                                                 <h4 className="text-xl font-black uppercase text-neon mb-6 flex items-center gap-2"><Sparkles size={24} /> RÉPONSES_EXAMEN_EXPERT</h4>
                                                 <div className="grid grid-cols-2 gap-4 mb-8">
-                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle A</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses.exam.part1_a_issues}</p></div>
-                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle B</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses.exam.part1_b_issues}</p></div>
+                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle A</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses?.exam?.part1_a_issues}</p></div>
+                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle B</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses?.exam?.part1_b_issues}</p></div>
                                                 </div>
-                                                <div className="p-6 border border-neon bg-black/40 mb-8"><p className="text-neon font-bold uppercase text-[9px] mb-2">Justification Globale</p><p className="text-sm">{selectedStudent.activity_metadata.responses.exam.part2_justification}</p></div>
+                                                <div className="p-6 border border-neon bg-black/40 mb-8"><p className="text-neon font-bold uppercase text-[9px] mb-2">Justification Globale</p><p className="text-sm">{selectedStudent.activity_metadata.responses?.exam?.part2_justification}</p></div>
                                                 <div className="border-t border-neon/30 pt-8 flex flex-col items-center">
                                                     <button onClick={analyzeWithAI} disabled={isAnalyzing} className={`px-10 py-3 text-xs font-black border uppercase tracking-widest ${isAnalyzing ? 'bg-neon/10 text-neon/40' : 'bg-neon text-background border-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.2)]'}`}>{isAnalyzing ? 'ANALYSE_EN_COURS...' : 'GÉNÉRER ANALYSE AI'}</button>
                                                     {(suggestedScore !== null || suggestedFeedback) && (
