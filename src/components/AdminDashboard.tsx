@@ -159,7 +159,18 @@ export default function AdminDashboard() {
 
             await saveActivityProgress(userId, moduleId, chapterId, selectedStudent.activity_metadata.step, updatedResponses);
 
-            alert(`Evaluation marquée comme ${status.toUpperCase()}`);
+            // SYNC COMPLETION STATUS TO DATABASE
+            const supabase = createClient();
+            await supabase.from('user_progress').upsert({
+                user_id: userId,
+                chapter_id: chapterId,
+                module_id: moduleId,
+                completed: status === 'passed',
+                score: suggestedScore,
+                completed_at: status === 'passed' ? new Date().toISOString() : null
+            }, { onConflict: 'user_id,chapter_id' });
+
+            alert(`Evaluation marquée comme ${status.toUpperCase()} ${status === 'passed' ? 'et module débloqué' : ''}`);
             fetchData();
             setSelectedStudent(null);
             setSuggestedFeedback('');
@@ -270,15 +281,20 @@ export default function AdminDashboard() {
                 const s5 = responses.section5;
 
                 prompt = `
-                    Tu es un expert en Data Annotation et RLHF (Niveau Expert). Tu corriges l'examen final et les activités d'un étudiant.
-                    TRAVAUX DE L'ÉTUDIANT:
-                    SECTION 1.1: Note A: ${s1.t1_1_ratingA}, Note B: ${s1.t1_1_ratingB}, Choix: ${s1.t1_1_best}, Justification: ${s1.t1_1_justification}
-                    SECTION 5.1: Poème: ${s5.t5_1_poem}
-                    EXAMEN FINAL: Issues A: ${exam.part1_a_issues}, Issues B: ${exam.part1_b_issues}, Justification: ${exam.part2_justification}
-                    JSON format: {"score": 85, "feedback": "..."}
+                    Tu es un expert en Data Annotation et RLHF (Niveau Expert Senior). 
+                    TON RÔLE : Évaluer sans pitié la qualité du travail d'un candidat. Tu dois être froid, technique et extrêmement exigeant.
+                    CRITÈRES : Précision factuelle absolue, respect total des contraintes, finesse de l'analyse.
+                    
+                    TRAVAUX DE L'ÉTUDIANT :
+                    SECTION 1.1 (Ranking) : Note A: ${s1.t1_1_ratingA}, Note B: ${s1.t1_1_ratingB}, Choix: ${s1.t1_1_best}, Justification: ${s1.t1_1_justification}
+                    SECTION 5.1 (Instruction Following) : Poème (doit faire 4 lignes, 7 mots/ligne, NO letter 'a'): ${s5.t5_1_poem}
+                    EXAMEN FINAL : Issues A: ${exam.part1_a_issues}, Issues B: ${exam.part1_b_issues}, Justification: ${exam.part2_justification}
+                    
+                    CONSIGNE : Si le poème en 5.1 ne respecte pas STRICTEMENT les contraintes (4 lignes, 7 mots, pas de 'a'), le score global doit être sévèrement pénalisé.
+                    Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
                 `;
             } else if (responses.quiz) {
-                prompt = `Correction Quiz Module 2: ${JSON.stringify(responses.quiz)}. Score sur 100, JSON format.`;
+                prompt = `Évaluation stricte du Quiz Module 2 (Prompt Engineering). Analyse la pertinence technique : ${JSON.stringify(responses.quiz)}. Réponds en JSON uniquement : {"score": number, "feedback": "..."}`;
             }
 
             const result = await model.generateContent(prompt);
