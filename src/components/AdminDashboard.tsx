@@ -278,10 +278,10 @@ export default function AdminDashboard() {
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const responses = selectedStudent.activity_metadata.responses;
-            const quiz = responses.quiz;
 
-            if (!quiz) {
-                alert("Erreur: Le quiz n'est pas présent dans les données de l'étudiant.");
+            // Check if we have at least some relevant data to analyze
+            if (!responses.quiz && !responses.exam && !responses.section1) {
+                alert("Erreur: Aucune donnée de soumission (quiz ou examen) n'a été trouvée pour cet étudiant.");
                 setIsAnalyzing(false);
                 return;
             }
