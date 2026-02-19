@@ -67,6 +67,7 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState<string>('idle');
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     // Initialize with known fallback IDs so persistence works immediately on mount
     const [activeChapterId, setActiveChapterId] = useState<number>(21);
     const [activeModuleId, setActiveModuleId] = useState<number>(6);
@@ -113,6 +114,22 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
 
                 if (moduleData) {
                     setActiveModuleId(moduleData.id);
+
+                    // Prioritize Chapter 21 if it belongs to this module (Standardized ID)
+                    const { data: chapter21 } = await supabase
+                        .from('chapters')
+                        .select('id')
+                        .eq('id', 21)
+                        .eq('module_id', moduleData.id)
+                        .maybeSingle();
+
+                    if (chapter21) {
+                        console.log("ModelEval: Standardized Chapter 21 found");
+                        setActiveChapterId(21);
+                        return;
+                    }
+
+                    // Otherwise fall back to the first chapter of the module
                     const { data: chapterData } = await supabase
                         .from('chapters')
                         .select('id')
@@ -122,8 +139,9 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                         .maybeSingle();
 
                     if (chapterData) {
+                        console.log("ModelEval: Using first chapter as alternative:", chapterData.id);
                         setActiveChapterId(chapterData.id);
-                        return; // useEffect below will trigger loadSavedProgress
+                        return;
                     }
                 }
                 // Fallback to hardcoded IDs if slug lookup fails
@@ -143,16 +161,21 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
     useEffect(() => {
         if (isInitialLoading || !userId || !activeChapterId) return;
         const timer = setTimeout(async () => {
-            setSaveStatus('Autosaving...');
+            setSaveStatus('Saving...');
+            setIsSaving(true);
             try {
+                console.log(`ModelEval: Autosaving progress for chapter ${activeChapterId}...`);
                 await saveActivityProgress(userId, activeModuleId, activeChapterId, currentSection, responses);
-                setSaveStatus('Saved (Auto)');
+                setSaveStatus('Saved');
                 setLastSaveTime(new Date().toLocaleTimeString());
             } catch (err: any) {
                 console.error("Autosave error:", err);
                 setSaveStatus('Error');
+            } finally {
+                setIsSaving(false);
             }
-        }, 2000); // Reduced from 5s to 2s for better UX
+        }, 2000);
+        // Reduced from 5s to 2s for better UX
         return () => clearTimeout(timer);
     }, [responses, currentSection, userId, isInitialLoading, activeChapterId]);
 
@@ -296,9 +319,18 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                     </h1>
                     <p className="text-[10px] text-neon/40 mt-1 uppercase tracking-widest">// NIV_EXPERT : QUALITY_ASSURANCE_PROTOCOL</p>
                 </div>
-                <div className="text-right">
-                    <div className={`text-[9px] font-mono px-2 py-1 border ${saveStatus.includes('Saved') ? 'text-green-500 border-green-500/30' : 'text-neon/50 border-neon/20'}`}>
-                        {saveStatus.toUpperCase()} {lastSaveTime && `[${lastSaveTime}]`}
+                {/* DEBUG STATUS INDICATOR */}
+                <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none z-20">
+                    <div className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors ${saveStatus === 'Saved' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
+                            saveStatus === 'Saving...' ? 'bg-blue-500/20 text-blue-500 border-blue-500/30' :
+                                saveStatus === 'Error' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                                    'bg-neon/10 text-neon border-neon/20'
+                        }`}>
+                        <div className="flex items-center gap-2">
+                            {isSaving && <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />}
+                            <span>STATUS: {saveStatus.toUpperCase()}</span>
+                            {lastSaveTime && <span className="opacity-50 ml-2">({lastSaveTime})</span>}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -432,8 +464,8 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                                             section1: { ...prev.section1, preferenceRanking: opt.value }
                                         }))}
                                         className={`py-3 px-4 text-[10px] font-black uppercase tracking-wider border transition-all ${responses.section1.preferenceRanking === opt.value
-                                                ? 'bg-neon text-background border-neon shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                                                : 'bg-neon/5 text-neon/60 border-neon/20 hover:border-neon/50 hover:text-neon'
+                                            ? 'bg-neon text-background border-neon shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                            : 'bg-neon/5 text-neon/60 border-neon/20 hover:border-neon/50 hover:text-neon'
                                             }`}
                                     >
                                         {opt.label}
