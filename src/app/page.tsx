@@ -12,6 +12,7 @@ import FeedbackSystem from '@/components/FeedbackSystem';
 import { getCurrentUser, signOut, getUserProfile } from '@/lib/supabase/auth';
 import { getUserProgress, getConditionalAccessStatus } from '@/lib/progress';
 import { createClient } from '@/lib/supabase/client'; // ADDED
+import { RefreshCw } from 'lucide-react'; // Added for manual refresh
 import PromptEngineeringModule from '@/components/PromptEngineeringModule';
 import DataAnnotationModule from '@/components/DataAnnotationModule';
 import ModelEvaluationModule from '@/components/ModelEvaluationModule';
@@ -252,7 +253,16 @@ export default function Dashboard() {
 
           {activeView !== 'admin' && (
             <div className="bg-neon/5 border border-neon/20 p-5 min-w-[200px] backdrop-blur-md">
-              <p className="text-[9px] uppercase font-black opacity-50 text-neon tracking-[0.2em]">System_Progress</p>
+              <div className="flex justify-between items-center mb-1">
+                <p className="text-[9px] uppercase font-black opacity-50 text-neon tracking-[0.2em]">System_Progress</p>
+                <button
+                  onClick={() => checkUser()}
+                  className="text-neon/50 hover:text-neon transition-colors p-1"
+                  title="Rafraîchir la progression"
+                >
+                  <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+                </button>
+              </div>
               <p className="font-mono text-4xl font-bold text-neon">{progress}%</p>
               <div className="w-full h-1 bg-neon/10 mt-2">
                 <div className="h-full bg-neon transition-all duration-1000" style={{ width: `${progress}%` }} />
@@ -268,9 +278,9 @@ export default function Dashboard() {
             <ModuleCard title="Prompt Engineering" description="Advanced AI interaction" order={2} seqId="6c76e8" locked={!isModuleCompleted(2)} onStart={() => setActiveView('module-2')} />
             {/* Data Annotation (Module 3) depends on Prompt (ID 2) */}
             <ModuleCard title="Data Annotation" description="Hands-on labeling for AI" order={3} seqId="596001" onStart={() => setActiveView('module-3')} locked={!isModuleCompleted(2)} />
-            {/* Model Evaluation (Module 4) depends on Annotation (ID 5) */}
-            <ModuleCard title="Model Evaluation" description="Testing and validating AI systems" order={4} seqId="b2c3d4" locked={!isModuleCompleted(5)} onStart={() => setActiveView('module-4')} />
-            {/* Final Assessment (Module 5) depends on Model Eval (ID 6) */}
+            {/* Model Evaluation (Module 4) - UNLOCKED for everyone as requested */}
+            <ModuleCard title="Model Evaluation" description="Testing and validating AI systems" order={4} seqId="b2c3d4" locked={false} onStart={() => setActiveView('module-4')} />
+            {/* Final Assessment (Module 5) - STILL LOCKED as requested */}
             <ModuleCard title="Final Assessment" description="Evaluation & Certification" order={5} seqId="9c5a87" locked={!isModuleCompleted(6)} onStart={() => setActiveView('module-5')} />
           </div>
         ) : (
