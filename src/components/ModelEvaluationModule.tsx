@@ -106,50 +106,66 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
         async function resolveIDs() {
             try {
                 const supabase = createClient();
-                const { data: moduleData } = await supabase
+                console.log("ModelEval: Attempting to resolve IDs for slug 'model-evaluation'...");
+
+                const { data: moduleData, error: mError } = await supabase
                     .from('modules')
-                    .select('id')
+                    .select('id, title')
                     .eq('slug', 'model-evaluation')
                     .maybeSingle();
 
+                if (mError) {
+                    console.error("ModelEval: Module lookup error:", mError);
+                }
+
                 if (moduleData) {
+                    console.log(`ModelEval: Resolved module '${moduleData.title}' as ID ${moduleData.id}`);
                     setActiveModuleId(moduleData.id);
 
-                    // Prioritize Chapter 21 if it belongs to this module (Standardized ID)
-                    const { data: chapter21 } = await supabase
+                    // Prioritize Chapter 21 if it belongs to this module
+                    const { data: chapter21, error: c21Error } = await supabase
                         .from('chapters')
-                        .select('id')
+                        .select('id, title')
                         .eq('id', 21)
                         .eq('module_id', moduleData.id)
                         .maybeSingle();
 
+                    if (c21Error) console.error("ModelEval: Chapter 21 lookup error:", c21Error);
+
                     if (chapter21) {
-                        console.log("ModelEval: Standardized Chapter 21 found");
+                        console.log(`ModelEval: Standardized Chapter 21 ('${chapter21.title}') found and set.`);
                         setActiveChapterId(21);
                         return;
                     }
 
                     // Otherwise fall back to the first chapter of the module
-                    const { data: chapterData } = await supabase
+                    const { data: chapterData, error: cError } = await supabase
                         .from('chapters')
-                        .select('id')
+                        .select('id, title')
                         .eq('module_id', moduleData.id)
                         .order('order_index', { ascending: true })
                         .limit(1)
                         .maybeSingle();
 
+                    if (cError) console.error("ModelEval: Chapter lookup error:", cError);
+
                     if (chapterData) {
-                        console.log("ModelEval: Using first chapter as alternative:", chapterData.id);
+                        console.log(`ModelEval: Using first chapter '${chapterData.title}' as alternative:`, chapterData.id);
                         setActiveChapterId(chapterData.id);
                         return;
+                    } else {
+                        console.warn("ModelEval: No chapters found for module", moduleData.id);
                     }
+                } else {
+                    console.warn("ModelEval: No module found with slug 'model-evaluation'. Check DB or RLS permissions.");
                 }
+
                 // Fallback to hardcoded IDs if slug lookup fails
-                console.warn("ModelEval: slug lookup failed, using fallback IDs");
+                console.warn("ModelEval: Using hardcoded fallback IDs (6 / 21)");
                 setActiveModuleId(FALLBACK_MODULE_ID);
                 setActiveChapterId(FALLBACK_CHAPTER_ID);
             } catch (err) {
-                console.error("Error resolving ids:", err);
+                console.error("ModelEval: UNEXPECTED error resolving ids:", err);
                 setActiveModuleId(FALLBACK_MODULE_ID);
                 setActiveChapterId(FALLBACK_CHAPTER_ID);
             }
@@ -322,9 +338,9 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                 {/* DEBUG STATUS INDICATOR */}
                 <div className="absolute top-2 right-2 flex flex-col items-end pointer-events-none z-20">
                     <div className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors ${saveStatus === 'Saved' ? 'bg-green-500/20 text-green-500 border-green-500/30' :
-                            saveStatus === 'Saving...' ? 'bg-blue-500/20 text-blue-500 border-blue-500/30' :
-                                saveStatus === 'Error' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
-                                    'bg-neon/10 text-neon border-neon/20'
+                        saveStatus === 'Saving...' ? 'bg-blue-500/20 text-blue-500 border-blue-500/30' :
+                            saveStatus === 'Error' ? 'bg-red-500/20 text-red-500 border-red-500/30' :
+                                'bg-neon/10 text-neon border-neon/20'
                         }`}>
                         <div className="flex items-center gap-2">
                             {isSaving && <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />}
