@@ -137,18 +137,23 @@ export async function getAllStudentsProgress() {
     .filter(p => p.email?.toLowerCase() !== adminEmail && p.is_admin !== true)
     .map(profile => {
       const userProg = progress.filter(pr => pr.user_id === profile.id);
-      // Extraire les métadonnées d'activité les plus pertinentes
-      // On priorise Module 4, puis Module 3 (Chapter 16), puis Module 2 (Chapter 11)
+
+      // Collect metadata for each significant module/chapter
       const m4Progress = userProg.find(pr => pr.module_id === 6);
       const m3Progress = userProg.find(pr => pr.chapter_id === 16);
       const m2Progress = userProg.find(pr => pr.chapter_id === 11);
 
-      const activityData = (m4Progress?.metadata || m3Progress?.metadata || m2Progress?.metadata || null) as any;
-
       return {
         ...profile,
         user_progress: userProg,
-        activity_metadata: activityData
+        // Provide direct access to module-specific data
+        module_metadata: {
+          m2: (m2Progress?.metadata || null) as any,
+          m3: (m3Progress?.metadata || null) as any,
+          m4: (m4Progress?.metadata || null) as any
+        },
+        // Fallback for existing code but better to use module_metadata
+        activity_metadata: (m4Progress?.metadata || m3Progress?.metadata || m2Progress?.metadata || null) as any
       };
     });
 

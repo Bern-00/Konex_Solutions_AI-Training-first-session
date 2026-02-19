@@ -7,6 +7,32 @@ import { getAllStudentsProgress, resetStudentAttempts, saveActivityProgress } fr
 import { getMessages, markMessageAsRead } from '@/lib/messages';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+interface ModuleResponses {
+    [key: string]: any;
+    status?: 'pending' | 'submitted' | 'passed' | 'failed';
+    score?: number | null;
+    feedback?: string;
+    quiz?: {
+        status: 'pending' | 'submitted' | 'passed' | 'failed';
+        score?: number | null;
+        submittedAt?: string | null;
+        feedback?: string;
+        [key: string]: any;
+    };
+    exam?: {
+        status: 'pending' | 'submitted' | 'passed' | 'failed';
+        score?: number | null;
+        submittedAt?: string | null;
+        feedback?: string;
+        [key: string]: any;
+    };
+}
+
+interface ModuleData {
+    step: number;
+    responses: ModuleResponses;
+}
+
 interface StudentProgress {
     id: string;
     email: string;
@@ -19,47 +45,15 @@ interface StudentProgress {
         attempts: number;
         completed_at: string | null;
     }[];
+    module_metadata: {
+        m2?: ModuleData;
+        m3?: ModuleData;
+        m4?: ModuleData;
+        [key: string]: any;
+    };
     activity_metadata: {
         step: number;
-        responses: {
-            activity1: string;
-            activity2: string;
-            activity3_1: string;
-            activity3_2: string;
-            activity4_1: string;
-            activity4_2: string;
-            quiz?: {
-                part1_A: string;
-                part1_B: string;
-                part2_q1: string;
-                part2_q2: string;
-                part2_q3: string;
-                part2_q4: string;
-                part2_q5: string;
-                part3_p1: string;
-                part3_p2: string;
-                part3_p3: string;
-                status: 'pending' | 'submitted' | 'passed' | 'failed';
-                submittedAt: string | null;
-                feedback?: string;
-                score?: number | null;
-            };
-            section1?: any;
-            section2?: any;
-            section3?: any;
-            section4?: any;
-            section5?: any;
-            exam?: {
-                status: 'pending' | 'submitted' | 'passed' | 'failed';
-                submittedAt: string | null;
-                feedback?: string;
-                score?: number | null;
-                part1_a_issues: string;
-                part1_b_issues: string;
-                part2_justification: string;
-                [key: string]: any;
-            };
-        };
+        responses: ModuleResponses;
     } | null;
 }
 
@@ -123,54 +117,67 @@ export default function AdminDashboard() {
     }
 
     async function handleGradeQuiz(userId: string, status: 'passed' | 'failed') {
-        if (!selectedStudent || !selectedStudent.activity_metadata) return;
+        if (!selectedStudent) return;
 
         try {
-            const responses = selectedStudent.activity_metadata.responses;
-            let updatedResponses;
-            let moduleId = 2; // Default Module 2
-            let chapterId = 11;
+            const m4Data = selectedStudent.module_metadata?.m4?.responses;
+            const m3Data = selectedStudent.module_metadata?.m3?.responses;
+            const m2Data = selectedStudent.module_metadata?.m2?.responses;
 
-            if (responses.section1?.gradingA || responses.section3?.audioEn) {
+            let updatedResponses;
+            let moduleId = 2; // Default
+            let chapterId = 11;
+            let currentStep = 1;
+
+            if (m4Data?.section1?.gradingA || m4Data?.section3?.audioEn) {
                 // Module 4: Model Evaluation
                 const m4Prog = selectedStudent.user_progress.find((p: any) => p.module_id === 6);
                 moduleId = m4Prog?.module_id || 6;
                 chapterId = m4Prog?.chapter_id || 21;
+                currentStep = selectedStudent.module_metadata?.m4?.step || 5;
+
                 updatedResponses = {
-                    ...responses,
+                    ...m4Data,
                     status: status,
                     feedback: suggestedFeedback,
                     score: suggestedScore
                 };
-            } else if (responses.exam) {
+            } else if (m3Data?.exam) {
                 // Module 3: Data Annotation
                 moduleId = 5;
                 chapterId = 16;
+                currentStep = selectedStudent.module_metadata?.m3?.step || 5;
+
                 updatedResponses = {
-                    ...responses,
+                    ...m3Data,
                     exam: {
-                        ...responses.exam,
+                        ...m3Data.exam,
                         status: status,
                         feedback: suggestedFeedback,
                         score: suggestedScore
                     }
                 };
-            } else if (responses.quiz) {
+            } else if (m2Data?.quiz) {
                 // Module 2: Prompt Engineering
                 moduleId = 2;
                 chapterId = 11;
+                currentStep = selectedStudent.module_metadata?.m2?.step || 5;
+
                 updatedResponses = {
-                    ...responses,
+                    ...m2Data,
                     quiz: {
-                        ...responses.quiz,
+                        ...m2Data.quiz,
                         status: status,
                         feedback: suggestedFeedback,
                         score: suggestedScore
                     }
                 };
+            } else {
+                alert("Impossible de déterminer le module à noter.");
+                return;
             }
 
-            await saveActivityProgress(userId, moduleId, chapterId, selectedStudent.activity_metadata.step, updatedResponses);
+            await saveActivityProgress(userId, moduleId, chapterId, currentStep, updatedResponses);
 
             // SYNC COMPLETION STATUS TO DATABASE
             const supabase = createClient();
@@ -227,37 +234,52 @@ export default function AdminDashboard() {
     }
 
     async function handleRollbackPhase(student: StudentProgress) {
-        if (!student.activity_metadata) return;
         if (!confirm("Voulez-vous autoriser cet étudiant à modifier sa soumission ? Ses réponses seront conservées.")) return;
 
         try {
-            const responses = student.activity_metadata.responses;
-            let moduleId, chapterId, step;
-            let updatedResponses = { ...responses };
+            const m4Data = student.module_metadata?.m4?.responses;
+            const m3Data = student.module_metadata?.m3?.responses;
+            const m2Data = student.module_metadata?.m2?.responses;
 
-            if (responses.section1?.gradingA) {
+            let moduleId, chapterId, step;
+            let updatedResponses;
+
+            if (m4Data?.section1?.gradingA || m4Data?.section3?.audioEn) {
                 // Module 4
-                moduleId = 6;
-                chapterId = 21;
-                step = 1; // Return to first step of evaluation
-                updatedResponses.status = 'pending';
-            } else if (responses.exam) {
+                const m4Prog = student.user_progress.find((p: any) => p.module_id === 6);
+                moduleId = m4Prog?.module_id || 6;
+                chapterId = m4Prog?.chapter_id || 21;
+                step = student.module_metadata?.m4?.step || 1;
+
+                updatedResponses = {
+                    ...m4Data,
+                    status: 'pending'
+                };
+            } else if (m3Data?.exam) {
                 // Module 3
                 moduleId = 5;
                 chapterId = 16;
-                step = 5;
-                updatedResponses.exam = responses.exam ? {
-                    ...responses.exam,
-                    status: 'pending'
-                } : undefined;
-            } else if (responses.quiz) {
+                step = student.module_metadata?.m3?.step || 5;
+
+                updatedResponses = {
+                    ...m3Data,
+                    exam: {
+                        ...m3Data.exam,
+                        status: 'pending'
+                    }
+                };
+            } else if (m2Data?.quiz) {
                 // Module 2
                 moduleId = 2;
                 chapterId = 11;
-                step = 5;
-                updatedResponses.quiz = {
-                    ...responses.quiz,
-                    status: 'pending'
+                step = student.module_metadata?.m2?.step || 5;
+
+                updatedResponses = {
+                    ...m2Data,
+                    quiz: {
+                        ...m2Data.quiz,
+                        status: 'pending'
+                    }
                 };
             } else {
                 alert("Impossible de déterminer le module pour le rollback.");
@@ -276,29 +298,24 @@ export default function AdminDashboard() {
     }
 
     async function analyzeWithAI() {
-        if (!selectedStudent || !selectedStudent.activity_metadata) return;
+        if (!selectedStudent) return;
 
         setIsAnalyzing(true);
         try {
             const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-            const responses = selectedStudent.activity_metadata.responses;
-
-            // Check if we have at least some relevant data to analyze
-            if (!responses.quiz && !responses.exam && !responses.section1) {
-                alert("Erreur: Aucune donnée de soumission (quiz ou examen) n'a été trouvée pour cet étudiant.");
-                setIsAnalyzing(false);
-                return;
-            }
+            const m3Data = selectedStudent.module_metadata?.m3?.responses;
+            const m4Data = selectedStudent.module_metadata?.m4?.responses;
+            const m2Data = selectedStudent.module_metadata?.m2?.responses;
 
             let prompt = "";
 
-            if (responses.section1?.gradingA || responses.section3?.audioEn) {
+            if (m4Data?.section1?.gradingA || m4Data?.section3?.audioEn) {
                 // Module 4 (Model Evaluation)
-                const s1 = responses.section1;
-                const s2 = responses.section2;
-                const s3 = responses.section3;
+                const s1 = m4Data.section1;
+                const s2 = m4Data.section2;
+                const s3 = m4Data.section3;
                 prompt = `
                     Tu es un expert en Data Annotation et RLHF (Niveau Expert Senior). 
                     TON RÔLE : Évaluer sans pitié la qualité du travail d'un candidat. Tu dois être froid, technique et extrêmement exigeant.
@@ -307,24 +324,24 @@ export default function AdminDashboard() {
                     TRAVAUX DE L'ÉTUDIANT (MODEL EVALUATION) :
                     
                     SECTION 1 (SbS Evaluation) : 
-                    Grille Modèle A: ${JSON.stringify(s1.gradingA)}
-                    Grille Modèle B: ${JSON.stringify(s1.gradingB)}
+                    Grille Modèle A: ${JSON.stringify(s1?.gradingA || {})}
+                    Grille Modèle B: ${JSON.stringify(s1?.gradingB || {})}
                     
                     SECTION 2 (Localization) :
-                    Traduction UK->CA: ${s2.exo2a.translation}
-                    Traduction US->FR: ${s2.exo2b.translation}
+                    Traduction UK->CA: ${s2?.exo2a?.translation || 'N/A'}
+                    Traduction US->FR: ${s2?.exo2b?.translation || 'N/A'}
                     
-                    SECTION 3 (Audio Role) : ${s3.randomPrompt}
+                    SECTION 3 (Audio Role) : ${s3?.randomPrompt || 'N/A'}
                     (L'audio a été enregistré dans les deux langues).
                     
                     CONSIGNE : Évalue la pertinence des critères SbS et la qualité des localisations (termes politiques au Québec, termes de consommation en France).
                     Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
                 `;
-            } else if (responses.exam) {
+            } else if (m3Data?.exam) {
                 // Module 3 (Data Annotation)
-                const s1 = responses.section1;
-                const s5 = responses.section5;
-                const exam = responses.exam;
+                const s1 = m3Data.section1;
+                const s5 = m3Data.section5;
+                const exam = m3Data.exam;
                 prompt = `
                     Tu es un expert en Data Annotation et RLHF (Niveau Expert Senior). 
                     TON RÔLE : Évaluer sans pitié la qualité du travail d'un candidat. Tu dois être froid, technique et extrêmement exigeant.
@@ -332,15 +349,19 @@ export default function AdminDashboard() {
                     
                     TRAVAUX DE L'ÉTUDIANT (DATA ANNOTATION) :
                     
-                    SECTION 1.1 (Ranking) : Note A: ${s1.t1_1_ratingA}, Note B: ${s1.t1_1_ratingB}, Choix: ${s1.t1_1_best}, Justification: ${s1.t1_1_justification}
-                    SECTION 5.1 (Instruction Following) : Poème (doit faire 4 lignes, 7 mots/ligne, NO letter 'a'): ${s5.t5_1_poem}
-                    EXAMEN FINAL : Issues A: ${exam.part1_a_issues}, Issues B: ${exam.part1_b_issues}, Justification: ${exam.part2_justification}
+                    SECTION 1.1 (Ranking) : Note A: ${s1?.t1_1_ratingA || 0}, Note B: ${s1?.t1_1_ratingB || 0}, Choix: ${s1?.t1_1_best || 'N/A'}, Justification: ${s1?.t1_1_justification || 'N/A'}
+                    SECTION 5.1 (Instruction Following) : Poème (doit faire 4 lignes, 7 mots/ligne, NO letter 'a'): ${s5?.t5_1_poem || 'N/A'}
+                    EXAMEN FINAL : Issues A: ${exam?.part1_a_issues || 'N/A'}, Issues B: ${exam?.part1_b_issues || 'N/A'}, Justification: ${exam?.part2_justification || 'N/A'}
                     
                     CONSIGNE : Si le poème en 5.1 ne respecte pas STRICTEMENT les contraintes (4 lignes, 7 mots, pas de 'a'), le score global doit être sévèrement pénalisé.
                     Réponds au format JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}
                 `;
-            } else if (responses.quiz) {
-                prompt = `Évaluation stricte du Quiz Module 2 (Prompt Engineering). Analyse la pertinence technique : ${JSON.stringify(responses.quiz)}. Réponds en JSON uniquement : {"score": number, "feedback": "..."}`;
+            } else if (m2Data?.quiz) {
+                prompt = `Évaluation stricte du Quiz Module 2 (Prompt Engineering). Analyse la pertinence technique : ${JSON.stringify(m2Data.quiz)}. Réponds en JSON uniquement : {"score": number, "feedback": "Ton froid et critique..."}`;
+            } else {
+                alert("Erreur: Aucune donnée de soumission compatible trouvée.");
+                setIsAnalyzing(false);
+                return;
             }
 
             const result = await model.generateContent(prompt);
@@ -431,9 +452,10 @@ export default function AdminDashboard() {
                             <div className="flex justify-between items-start mb-10">
                                 <div><h3 className="text-2xl font-black uppercase text-foreground">{selectedStudent.full_name || selectedStudent.email}</h3><p className="text-xs font-mono text-neon opacity-60">// {selectedStudent.email}</p></div>
                                 <div className="flex gap-4">
-                                    {selectedStudent.activity_metadata && (
-                                        (selectedStudent.activity_metadata.responses.section1 && selectedStudent.activity_metadata.step >= 6) ||
-                                        (selectedStudent.activity_metadata.responses.quiz && (['submitted', 'passed', 'failed'].includes(selectedStudent.activity_metadata.responses.quiz.status)))
+                                    {(
+                                        (selectedStudent.module_metadata?.m4?.responses?.section1?.gradingA) ||
+                                        (selectedStudent.module_metadata?.m3?.responses?.exam?.status && ['submitted', 'passed', 'failed'].includes(selectedStudent.module_metadata.m3.responses.exam.status)) ||
+                                        (selectedStudent.module_metadata?.m2?.responses?.quiz?.status && ['submitted', 'passed', 'failed'].includes(selectedStudent.module_metadata.m2.responses.quiz.status))
                                     ) && (
                                             <button onClick={() => handleRollbackPhase(selectedStudent)} className="bg-blue-500/20 text-blue-500 px-4 py-2 text-[10px] font-black border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"><RotateCcw size={12} /> AUTORISER_MODIFICATION</button>
                                         )}
@@ -459,12 +481,12 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {selectedStudent.activity_metadata && (
+                            {selectedStudent.module_metadata && (
                                 <div className="mt-12 pt-10 border-t border-neon/20">
                                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-neon mb-8 flex items-center gap-2"><Brain size={14} /> Travaux_Expert_Analyse</h4>
                                     <div className="grid grid-cols-1 gap-6">
                                         {/* SECTION 4: MODEL EVALUATION (M04) */}
-                                        {selectedStudent.activity_metadata.responses?.section1?.gradingA && (
+                                        {selectedStudent.module_metadata.m4?.responses && (
                                             <div className="space-y-10 animate-in fade-in slide-in-from-right-4">
                                                 <div className="border-l-2 border-neon pl-4"><h4 className="text-neon font-black uppercase text-sm tracking-widest">M04: Model Evaluation Protocol</h4></div>
 
@@ -472,11 +494,11 @@ export default function AdminDashboard() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="bg-neon/5 border border-neon/20 p-4">
                                                         <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_A</h5>
-                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses?.section1?.gradingA, null, 2)}</pre>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.module_metadata.m4.responses.section1?.gradingA, null, 2)}</pre>
                                                     </div>
                                                     <div className="bg-neon/5 border border-neon/20 p-4">
                                                         <h5 className="text-[10px] font-black text-neon mb-2">GRILLE_MODÈLE_B</h5>
-                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.activity_metadata.responses?.section1?.gradingB, null, 2)}</pre>
+                                                        <pre className="text-[8px] opacity-70">{JSON.stringify(selectedStudent.module_metadata.m4.responses.section1?.gradingB, null, 2)}</pre>
                                                     </div>
                                                 </div>
 
@@ -484,11 +506,11 @@ export default function AdminDashboard() {
                                                 <div className="space-y-4">
                                                     <div className="p-4 bg-black/40 border border-white/5">
                                                         <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.1 (Fr_CA) :</p>
-                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses?.section2?.exo2a?.translation || 'N/A'}</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.module_metadata.m4.responses.section2?.exo2a?.translation || 'N/A'}</p>
                                                     </div>
                                                     <div className="p-4 bg-black/40 border border-white/5">
                                                         <p className="text-[9px] font-bold text-neon uppercase mb-1">Traduction 2.2 (Fr_FR) :</p>
-                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.activity_metadata.responses?.section2?.exo2b?.translation || 'N/A'}</p>
+                                                        <p className="text-[10px] italic opacity-80">{selectedStudent.module_metadata.m4.responses.section2?.exo2b?.translation || 'N/A'}</p>
                                                     </div>
                                                 </div>
 
@@ -496,14 +518,14 @@ export default function AdminDashboard() {
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="p-4 bg-blue-500/10 border border-blue-500/20">
                                                         <p className="text-[8px] font-black text-blue-500 uppercase mb-2">Recording_EN</p>
-                                                        {selectedStudent.activity_metadata.responses?.section3?.audioEn ? (
-                                                            <audio src={selectedStudent.activity_metadata.responses.section3.audioEn} controls className="w-full h-8" />
+                                                        {selectedStudent.module_metadata.m4.responses.section3?.audioEn ? (
+                                                            <audio src={selectedStudent.module_metadata.m4.responses.section3.audioEn} controls className="w-full h-8" />
                                                         ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
                                                     </div>
                                                     <div className="p-4 bg-orange-500/10 border border-orange-500/20">
                                                         <p className="text-[8px] font-black text-orange-500 uppercase mb-2">Recording_FR</p>
-                                                        {selectedStudent.activity_metadata.responses?.section3?.audioFr ? (
-                                                            <audio src={selectedStudent.activity_metadata.responses.section3.audioFr} controls className="w-full h-8" />
+                                                        {selectedStudent.module_metadata.m4.responses.section3?.audioFr ? (
+                                                            <audio src={selectedStudent.module_metadata.m4.responses.section3.audioFr} controls className="w-full h-8" />
                                                         ) : <span className="text-[8px] opacity-30">Aucun enregistrement</span>}
                                                     </div>
                                                 </div>
@@ -511,24 +533,24 @@ export default function AdminDashboard() {
                                         )}
 
                                         {/* SECTION 1: DATA ANNOTATION (M03) */}
-                                        {selectedStudent.activity_metadata.responses?.section1?.t1_1_justification && (
+                                        {selectedStudent.module_metadata.m3?.responses?.section1 && (
                                             <div className="p-6 bg-neon/5 border border-neon/10">
                                                 <p className="text-[10px] text-neon font-black uppercase tracking-widest mb-4">Module 3: Data Annotation</p>
-                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Justification Ranking</p><p>{selectedStudent.activity_metadata.responses?.section1?.t1_1_justification}</p></div>
-                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Détection Hallucinations</p><p>{selectedStudent.activity_metadata.responses?.section1?.t1_2_errors}</p></div>
+                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Justification Ranking</p><p>{selectedStudent.module_metadata.m3.responses.section1.t1_1_justification}</p></div>
+                                                <div className="p-4 bg-black/40 border border-white/5 space-y-2"><p className="text-neon font-bold uppercase text-[9px]">Détection Hallucinations</p><p>{selectedStudent.module_metadata.m3.responses.section1.t1_2_errors}</p></div>
                                             </div>
                                         )}
                                         {/* FINAL EXAM: DATA ANNOTATION (M03) */}
-                                        {selectedStudent.activity_metadata.responses?.exam?.status === 'submitted' && (
+                                        {selectedStudent.module_metadata.m3?.responses?.exam?.status === 'submitted' && (
                                             <div className="p-6 bg-neon/10 border border-neon pt-8 mt-8">
-                                                <h4 className="text-xl font-black uppercase text-neon mb-6 flex items-center gap-2"><Sparkles size={24} /> RÉPONSES_EXAMEN_EXPERT</h4>
+                                                <h4 className="text-xl font-black uppercase text-neon mb-6 flex items-center gap-2"><Sparkles size={24} /> RÉPONSES_EXAMEN_EXPERT (M03)</h4>
                                                 <div className="grid grid-cols-2 gap-4 mb-8">
-                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle A</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses?.exam?.part1_a_issues}</p></div>
-                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle B</p><p className="text-xs italic">{selectedStudent.activity_metadata.responses?.exam?.part1_b_issues}</p></div>
+                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle A</p><p className="text-xs italic">{selectedStudent.module_metadata.m3.responses.exam.part1_a_issues}</p></div>
+                                                    <div className="p-4 bg-black/40 border border-neon/20"><p className="text-neon font-bold uppercase text-[9px] mb-2">Modèle B</p><p className="text-xs italic">{selectedStudent.module_metadata.m3.responses.exam.part1_b_issues}</p></div>
                                                 </div>
-                                                <div className="p-6 border border-neon bg-black/40 mb-8"><p className="text-neon font-bold uppercase text-[9px] mb-2">Justification Globale</p><p className="text-sm">{selectedStudent.activity_metadata.responses?.exam?.part2_justification}</p></div>
+                                                <div className="p-6 border border-neon bg-black/40 mb-8"><p className="text-neon font-bold uppercase text-[9px] mb-2">Justification Globale</p><p className="text-sm">{selectedStudent.module_metadata.m3.responses.exam.part2_justification}</p></div>
                                                 <div className="border-t border-neon/30 pt-8 flex flex-col items-center">
-                                                    <button onClick={analyzeWithAI} disabled={isAnalyzing} className={`px-10 py-3 text-xs font-black border uppercase tracking-widest ${isAnalyzing ? 'bg-neon/10 text-neon/40' : 'bg-neon text-background border-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.2)]'}`}>{isAnalyzing ? 'ANALYSE_EN_COURS...' : 'GÉNÉRER ANALYSE AI'}</button>
+                                                    <button onClick={analyzeWithAI} disabled={isAnalyzing} className={`px-10 py-3 text-xs font-black border uppercase tracking-widest ${isAnalyzing ? 'bg-neon/10 text-neon/40' : 'bg-neon text-background border-neon shadow-[0_0_20px_rgba(var(--neon-rgb),0.2)]'}`}>{isAnalyzing ? 'ANALYSE_EN_COURS...' : 'GÉNÉRER ANALYSE IA'}</button>
                                                     {(suggestedScore !== null || suggestedFeedback) && (
                                                         <div className="w-full mt-10 space-y-6 animate-in slide-in-from-top-5">
                                                             <div className="flex items-center gap-4 justify-center"><span className="text-neon font-black text-xs">SCORE:</span><input type="number" value={suggestedScore || 0} onChange={e => setSuggestedScore(parseInt(e.target.value))} className="bg-neon/5 border border-neon/30 p-2 text-2xl font-black text-neon w-24 text-center" /><span className="text-neon/30 text-2xl font-black">/ 100</span></div>
