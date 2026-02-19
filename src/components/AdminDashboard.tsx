@@ -217,6 +217,38 @@ export default function AdminDashboard() {
         }
     }
 
+    async function handleConditionalAccess(student: StudentProgress) {
+        if (!confirm(`Accorder un ACCÈS CONDITIONNEL à ${student.full_name || student.email} ? L'étudiant pourra accéder au Module 4 malgré l'échec du Module 3. Il recevra une notice "Cours à reprendre" à la fin, PAS de certificat.`)) return;
+
+        try {
+            const supabase = createClient();
+            const m3Data = student.module_metadata?.m3?.responses;
+
+            // 1. Save the conditional_access flag into M03 metadata
+            await saveActivityProgress(student.id, 5, 16, student.module_metadata?.m3?.step || 5, {
+                ...m3Data,
+                conditional_access: true
+            });
+
+            // 2. Mark M03 (chapter 16) as completed so M04 unlocks
+            await supabase.from('user_progress').upsert({
+                user_id: student.id,
+                chapter_id: 16,
+                module_id: 5,
+                completed: true,
+                score: m3Data?.exam?.score || 0,
+                completed_at: new Date().toISOString()
+            }, { onConflict: 'user_id,chapter_id' });
+
+            alert(`Accès conditionnel accordé. ${student.full_name || student.email} peut maintenant accéder au Module 4 mais ne recevra PAS de certificat.`);
+            fetchData();
+            setSelectedStudent(null);
+        } catch (e) {
+            console.error("Erreur conditional access:", e);
+            alert("Erreur lors de l'attribution de l'accès conditionnel.");
+        }
+    }
+
     async function handleForceUnlock(userId: string) {
         if (!confirm("Voulez-vous forcer l'accès au Module 3 pour cet étudiant ? Cela marquera le Module 2 comme complété.")) return;
 
@@ -415,16 +447,25 @@ export default function AdminDashboard() {
                                     <h3 className="text-2xl font-black uppercase text-foreground">{selectedStudent.full_name || selectedStudent.email}</h3>
                                     <p className="text-xs font-mono text-neon opacity-60">// {selectedStudent.email}</p>
                                 </div>
-                                <div className="flex gap-4">
+                                <div className="flex flex-wrap gap-3 justify-end">
                                     {((selectedStudent.module_metadata?.m4?.responses?.section1?.gradingA) ||
                                         (selectedStudent.module_metadata?.m3?.responses?.exam?.status && ['submitted', 'passed', 'failed'].includes(selectedStudent.module_metadata.m3.responses.exam.status)) ||
                                         (selectedStudent.module_metadata?.m2?.responses?.quiz?.status && ['submitted', 'passed', 'failed'].includes(selectedStudent.module_metadata.m2.responses.quiz.status))
                                     ) && (
                                             <button onClick={() => handleRollbackPhase(selectedStudent)} className="bg-blue-500/20 text-blue-500 px-4 py-2 text-[10px] font-black border border-blue-500/50 hover:bg-blue-500 hover:text-white transition-all flex items-center gap-2"><RotateCcw size={12} /> AUTORISER_MODIFICATION</button>
                                         )}
+                                    {/* ACCÈS CONDITIONNEL — only for failed M03, not yet granted */}
+                                    {selectedStudent.module_metadata?.m3?.responses?.exam?.status === 'failed' &&
+                                        !selectedStudent.module_metadata?.m3?.responses?.conditional_access && (
+                                            <button onClick={() => handleConditionalAccess(selectedStudent)} className="bg-orange-500/20 text-orange-400 px-4 py-2 text-[10px] font-black border border-orange-500/50 hover:bg-orange-500 hover:text-white transition-all flex items-center gap-2"><ShieldAlert size={12} /> ACCÈS_CONDITIONNEL</button>
+                                        )}
+                                    {selectedStudent.module_metadata?.m3?.responses?.conditional_access && (
+                                        <span className="px-3 py-2 text-[9px] font-black border border-orange-500/30 text-orange-400 bg-orange-500/10 flex items-center gap-2">⚠ ACCÈS_CONDITIONNEL_ACTIF</span>
+                                    )}
                                     <button onClick={() => handleForceUnlock(selectedStudent.id)} className="bg-yellow-500/20 text-yellow-500 px-4 py-2 text-[10px] font-black border border-yellow-500/50 hover:bg-yellow-500 hover:text-background transition-all flex items-center gap-2"><ShieldAlert size={12} /> ACCÈS_SPÉCIAL</button>
                                     <button onClick={() => setSelectedStudent(null)} className="bg-neon/10 text-neon px-4 py-2 text-[10px] font-mono border border-neon/20 hover:bg-neon/20">FERMER_DETAIL</button>
                                 </div>
+
                             </div>
 
                             {/* Progress Overview */}

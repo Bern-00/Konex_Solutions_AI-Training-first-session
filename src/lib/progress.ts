@@ -215,3 +215,22 @@ export async function resetStudentAttempts(userId: string, chapterId: number) {
   if (error) throw error
   return { success: true }
 }
+
+export async function getConditionalAccessStatus(userId: string): Promise<boolean> {
+  const supabase = createClient();
+
+  // M03 is stored at chapter_id = 16
+  const { data, error } = await supabase
+    .from('user_progress')
+    .select('metadata')
+    .eq('user_id', userId)
+    .eq('chapter_id', 16)
+    .maybeSingle();
+
+  if (error) {
+    console.error('getConditionalAccessStatus error:', error);
+    return false;
+  }
+
+  return data?.metadata?.responses?.conditional_access === true;
+}

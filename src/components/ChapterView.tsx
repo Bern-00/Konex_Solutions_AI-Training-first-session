@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronRight, BookOpen, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { ChevronRight, BookOpen, AlertCircle, CheckCircle2, RotateCcw, Award, RefreshCw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { createClient } from '@/lib/supabase/client';
 import { submitQuizAttempt } from '@/lib/progress';
@@ -26,9 +26,10 @@ interface ChapterViewProps {
     userId: string;
     onBack: () => void;
     onComplete: () => void;
+    conditionalAccess?: boolean;
 }
 
-export default function ChapterView({ moduleSlug, userId, onBack, onComplete }: ChapterViewProps) {
+export default function ChapterView({ moduleSlug, userId, onBack, onComplete, conditionalAccess = false }: ChapterViewProps) {
     const [chapters, setChapters] = useState<Chapter[]>([]);
     const [resolvedModuleId, setResolvedModuleId] = useState<number | null>(null);
     const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
@@ -41,6 +42,7 @@ export default function ChapterView({ moduleSlug, userId, onBack, onComplete }: 
     const [userProgress, setUserProgress] = useState<any>(null);
     const [requiredScore, setRequiredScore] = useState(75);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showCertificate, setShowCertificate] = useState(false);
 
     const supabase = createClient();
 
@@ -212,6 +214,89 @@ export default function ChapterView({ moduleSlug, userId, onBack, onComplete }: 
 
     const progressPercentage = ((currentChapterIndex + 1) / chapters.length) * 100;
 
+    // ── Certificate / Notice overlay ──────────────────────────────────────
+    if (showCertificate) {
+        if (conditionalAccess) {
+            return (
+                <div className="max-w-2xl mx-auto mt-16 text-center">
+                    <div className="border-2 border-orange-500/50 bg-orange-500/5 p-14 relative overflow-hidden">
+                        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(249,115,22,0.04) 20px, rgba(249,115,22,0.04) 40px)' }} />
+                        <RefreshCw size={56} className="text-orange-400 mx-auto mb-6" />
+                        <h2 className="text-4xl font-black uppercase tracking-tighter text-orange-400 mb-2">COURS À REPRENDRE</h2>
+                        <div className="w-16 h-1 bg-orange-500 mx-auto my-6" />
+                        <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-4">
+                            Vous avez complété le parcours de formation Konex Solutions.<br />
+                            Cependant, le module <span className="text-orange-400 font-bold">Data Annotation</span> n'a pas été réussi.
+                        </p>
+                        <p className="font-mono text-xs text-foreground/50 leading-relaxed mb-10">
+                            Votre accès au module suivant vous a été accordé à titre conditionnel.<br />
+                            Pour obtenir votre certification, vous devrez reprendre et réussir ce module.
+                        </p>
+                        <div className="border border-orange-500/30 p-6 text-left space-y-2 mb-8">
+                            <p className="text-[10px] font-mono uppercase tracking-widest text-orange-400 mb-3">STATUT_FORMATION</p>
+                            <div className="flex justify-between font-mono text-xs">
+                                <span className="text-foreground/50">Module M01 — Introduction</span>
+                                <span className="text-neon">✓ RÉUSSI</span>
+                            </div>
+                            <div className="flex justify-between font-mono text-xs">
+                                <span className="text-foreground/50">Module M02 — Prompt Engineering</span>
+                                <span className="text-neon">✓ RÉUSSI</span>
+                            </div>
+                            <div className="flex justify-between font-mono text-xs">
+                                <span className="text-foreground/50">Module M03 — Data Annotation</span>
+                                <span className="text-orange-400">✗ ÉCHOUÉ</span>
+                            </div>
+                            <div className="flex justify-between font-mono text-xs">
+                                <span className="text-foreground/50">Module M04 — Model Evaluation</span>
+                                <span className="text-neon">✓ COMPLÉTÉ</span>
+                            </div>
+                        </div>
+                        <p className="text-[9px] font-mono uppercase tracking-[0.3em] text-foreground/30">
+                            KONEX SOLUTIONS · AI TRAINING PROGRAM · ACCÈS CONDITIONNEL ⚠
+                        </p>
+                        <button onClick={onComplete} className="mt-8 border border-orange-500/40 text-orange-400 px-10 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-orange-500/10 transition-all">
+                            Retour au tableau de bord
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Normal certificate
+        const today = new Date().toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+        return (
+            <div className="max-w-2xl mx-auto mt-16 text-center">
+                <div className="border-2 border-neon/60 bg-neon/5 p-14 relative overflow-hidden">
+                    <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(34,197,94,0.03) 20px, rgba(34,197,94,0.03) 40px)' }} />
+                    <Award size={64} className="text-neon mx-auto mb-6" style={{ filter: 'drop-shadow(0 0 20px rgba(34,197,94,0.6))' }} />
+                    <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-neon/60 mb-2">Certificat de Complétion</p>
+                    <h2 className="text-4xl font-black uppercase tracking-tighter text-foreground mb-1">FÉLICITATIONS</h2>
+                    <div className="w-16 h-[2px] bg-neon mx-auto my-6" />
+                    <p className="font-mono text-sm text-foreground/70 leading-relaxed mb-2">
+                        Vous avez complété avec succès l'ensemble du programme
+                    </p>
+                    <p className="text-2xl font-black uppercase text-neon mb-8 neon-glow">KONEX SOLUTIONS</p>
+                    <p className="font-mono text-xs text-foreground/50 mb-10">AI Training Program · Émis le {today}</p>
+                    <div className="border border-neon/20 p-6 text-left space-y-2 mb-8">
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-neon mb-3">MODULES_COMPLÉTÉS</p>
+                        {['M01 — Introduction aux LLMs', 'M02 — Prompt Engineering', 'M03 — Data Annotation', 'M04 — Model Evaluation'].map(m => (
+                            <div key={m} className="flex justify-between font-mono text-xs">
+                                <span className="text-foreground/50">{m}</span>
+                                <span className="text-neon">✓ RÉUSSI</span>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-[9px] font-mono uppercase tracking-[0.4em] text-foreground/30">
+                        KONEX SOLUTIONS · CERTIFIED AI TRAINER · {new Date().getFullYear()}
+                    </p>
+                    <button onClick={onComplete} className="mt-8 bg-neon text-background px-10 py-3 text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all">
+                        Retour au tableau de bord
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-4xl mx-auto pb-20">
             <div className="flex justify-between items-center mb-4">
@@ -332,10 +417,10 @@ export default function ChapterView({ moduleSlug, userId, onBack, onComplete }: 
                                     )}
                                     {(quizResults.passed || userProgress?.completed) && currentChapterIndex === chapters.length - 1 && (
                                         <button
-                                            onClick={onComplete}
+                                            onClick={() => moduleSlug === 'final-assessment' ? setShowCertificate(true) : onComplete()}
                                             className="bg-neon text-background px-8 py-3 font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all"
                                         >
-                                            Terminer Module
+                                            {moduleSlug === 'final-assessment' ? (conditionalAccess ? '⚠ Voir Résultats' : '🎓 Obtenir Certificat') : 'Terminer Module'}
                                         </button>
                                     )}
                                 </div>

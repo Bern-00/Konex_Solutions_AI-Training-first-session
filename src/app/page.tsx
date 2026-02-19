@@ -10,7 +10,7 @@ import ChapterView from '@/components/ChapterView';
 import AdminDashboard from '@/components/AdminDashboard';
 import FeedbackSystem from '@/components/FeedbackSystem';
 import { getCurrentUser, signOut, getUserProfile } from '@/lib/supabase/auth';
-import { getUserProgress } from '@/lib/progress';
+import { getUserProgress, getConditionalAccessStatus } from '@/lib/progress';
 import { createClient } from '@/lib/supabase/client'; // ADDED
 import PromptEngineeringModule from '@/components/PromptEngineeringModule';
 import DataAnnotationModule from '@/components/DataAnnotationModule';
@@ -54,6 +54,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [userProgress, setUserProgress] = useState<UserProgress[]>([]);
+  const [conditionalAccess, setConditionalAccess] = useState<boolean>(false);
 
   useEffect(() => {
     // Check user on mount
@@ -119,6 +120,8 @@ export default function Dashboard() {
           try {
             const progressData = await getUserProgress(currentUser.id);
             setUserProgress(progressData || []);
+            const condAccess = await getConditionalAccessStatus(currentUser.id);
+            setConditionalAccess(condAccess);
           } catch (pErr) {
             console.error('Progress fetch error (non-critical):', pErr);
           }
@@ -344,6 +347,7 @@ export default function Dashboard() {
               <ChapterView
                 moduleSlug="final-assessment"
                 userId={user.id}
+                conditionalAccess={conditionalAccess}
                 onBack={() => setActiveView('grid')}
                 onComplete={() => {
                   setActiveView('grid');
