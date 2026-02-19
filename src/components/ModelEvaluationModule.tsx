@@ -117,10 +117,15 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
 
                     if (chapterData) {
                         setActiveChapterId(chapterData.id);
+                        // loadSavedProgress will be triggered by the useEffect below
+                        return; // exit early — loading will be cleared by loadSavedProgress
                     }
                 }
+                // No module or no chapter found — still allow the component to render
+                setIsInitialLoading(false);
             } catch (err) {
                 console.error("Error resolving ids:", err);
+                setIsInitialLoading(false);
             }
         }
         resolveIDs();

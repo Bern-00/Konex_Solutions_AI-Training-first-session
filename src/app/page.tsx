@@ -147,62 +147,25 @@ export default function Dashboard() {
     }
   }
 
-  // Calculate global progress
+  // Calculate global progress — 20% per completed module (5 modules total)
   useEffect(() => {
     if (!userProgress || userProgress.length === 0) {
       setProgress(0);
       return;
     }
 
-    // A module is considered finished if its last chapter is completed.
-    // However, to be more robust, we look for 'completed' flags.
-    // The user specifically requested 20% per module for 5 modules.
-
-    // Get unique module IDs from the user progress
-    const completedModules = new Set(
+    // Count unique modules that have at least one completed chapter
+    const completedModuleIds = new Set(
       userProgress
-        .filter(p => p.completed && p.chapter_id % 100 !== 0) // Basic filter to ensure it's a real completion
+        .filter(p => p.completed)
         .map(p => p.module_id)
     );
 
-    // Actually, let's just count how many modules have AT LEAST one chapter completed for now, 
-    // or better: how many modules have their FINAL chapter completed.
-    // Since we only have Module 1 fully implemented, let's use a simpler logic:
-    // Every 5 unique (module_id, chapter_id) pairs completed could be a metric, but the user said 20% per module.
-
-    // Correct logic: Total modules = 5.
-    // Progress = (Number of unique modules with ALL chapters completed / 5) * 100
-    // But since we are still building, let's count a module as "started/in-progress" = 5%, "completed" = 20%.
-    // OR just follow the user: "when module 1 is finished ... 20%".
-
-    // Let's check how many modules have their LAST chapter completed.
-    // We assume each module has some chapters. For Module 1, it's 5 chapters.
-
-    const modulesWithCompletion = new Set();
-    // Module 1 is completed if chapter_id (last one) for module 1 is completed.
-    // We'll use a more generic approach: if at least one record has 'completed' for that module,
-    // we'll give partial credit, but 20% only if the module's MAX chapter is completed.
-
-    const moduleStatus = new Map();
-    userProgress.forEach(p => {
-      if (!moduleStatus.has(p.module_id)) {
-        moduleStatus.set(p.module_id, { chaptersCompleted: 0, totalChapters: 5 }); // Default 5 for now
-      }
-      if (p.completed) {
-        moduleStatus.set(p.module_id, {
-          ...moduleStatus.get(p.module_id),
-          chaptersCompleted: Math.max(moduleStatus.get(p.module_id).chaptersCompleted, 1) // Just tracking completion
-        });
-      }
-    });
-
-    // Let's keep it simple as requested: 20% per module that shows completion of its quiz.
-    // Since we have 5 chapters per module, we could do 4% per chapter.
-    const totalChaptersCompleted = userProgress.filter(p => p.completed).length;
-    // 25 chapters total (5 per module * 5 modules)
-    const calculatedProgress = Math.min(Math.round((totalChaptersCompleted / 25) * 100), 100);
+    // 5 modules × 20% each
+    const calculatedProgress = Math.min(completedModuleIds.size * 20, 100);
     setProgress(calculatedProgress);
   }, [userProgress]);
+
 
   const toggleTheme = (): void => {
     const newMode = !isDarkMode;
