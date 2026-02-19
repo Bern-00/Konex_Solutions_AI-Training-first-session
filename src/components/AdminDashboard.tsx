@@ -283,11 +283,10 @@ export default function AdminDashboard() {
         if (!selectedStudent) return;
         setIsAnalyzing(true);
         try {
-            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-            if (!apiKey) throw new Error("Clé API Gemini manquante dans .env.local");
+            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 
             const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
             const m3Data = selectedStudent.module_metadata?.m3?.responses;
             const m4Data = selectedStudent.module_metadata?.m4?.responses;
