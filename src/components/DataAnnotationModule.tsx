@@ -82,6 +82,9 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
     const [activeChapterId, setActiveChapterId] = useState<number>(16); // Correct Chapter ID for Data Annotation
     const [activeModuleId, setActiveModuleId] = useState<number>(5); // Correct Module ID
 
+    // Determine if the module is in read-only mode
+    const isReadOnly = responses.exam.status !== 'pending' && responses.exam.status !== undefined;
+
     // RESOLVE ID
     useEffect(() => {
         async function resolveIDs() {
@@ -214,12 +217,22 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                     </h1>
                     <p className="text-[10px] text-neon/40 mt-1 uppercase tracking-widest">// NIV_EXPERT : ANTI-CHEAT_ARCHITECTURE</p>
                 </div>
-                <div className="text-right">
-                    <div className={`text-[9px] font-mono px-2 py-1 border ${saveStatus === 'Saved' ? 'text-green-500 border-green-500/30' : 'text-neon/50 border-neon/20'}`}>
-                        {saveStatus.toUpperCase()} {lastSaveTime && `[${lastSaveTime}]`}
-                    </div>
+                <div className={`text-[9px] font-mono px-2 py-1 border ${saveStatus === 'Saved' ? 'text-green-500 border-green-500/30' : 'text-neon/50 border-neon/20'}`}>
+                    {saveStatus.toUpperCase()} {lastSaveTime && `[${lastSaveTime}]`}
                 </div>
             </div>
+
+            {isReadOnly && (
+                <div className="bg-blue-500/10 border border-blue-500/30 p-4 mb-10 animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <ShieldAlert className="text-blue-500" size={20} />
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Mode Relecture Actif</p>
+                            <p className="text-[8px] opacity-60 uppercase tracking-tighter">Votre soumission a été enregistrée. Les modifications sont désactivées sauf autorisation administrative.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-12">
                 {/* SECTION 1: TEXT ANNOTATION */}
@@ -255,7 +268,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                     <input
                                         type="number" min="1" max="7"
                                         placeholder="Note (1-7)"
-                                        className="w-full bg-background border border-neon/20 p-2 text-xs text-neon focus:border-neon outline-none"
+                                        disabled={isReadOnly}
+                                        className={`w-full bg-background border border-neon/20 p-2 text-xs text-neon focus:border-neon outline-none ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         value={responses.section1.t1_1_ratingA || ''}
                                         onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_1_ratingA: parseInt(e.target.value) } })}
                                     />
@@ -268,7 +282,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                     <input
                                         type="number" min="1" max="7"
                                         placeholder="Note (1-7)"
-                                        className="w-full bg-background border border-neon/20 p-2 text-xs text-neon focus:border-neon outline-none"
+                                        disabled={isReadOnly}
+                                        className={`w-full bg-background border border-neon/20 p-2 text-xs text-neon focus:border-neon outline-none ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         value={responses.section1.t1_1_ratingB || ''}
                                         onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_1_ratingB: parseInt(e.target.value) } })}
                                     />
@@ -278,7 +293,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div className="space-y-4 pt-4">
                                 <p className="text-xs font-bold uppercase">Lequel est globalement meilleur ?</p>
                                 <select
-                                    className="w-full bg-background border border-neon/20 p-3 text-xs text-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full bg-background border border-neon/20 p-3 text-xs text-neon outline-none ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     value={responses.section1.t1_1_best}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_1_best: e.target.value } })}
                                 >
@@ -288,7 +304,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 </select>
                                 <textarea
                                     placeholder="Justifiez en 5 phrases minimum en hiérarchisant les contraintes (Quantitatif vs Négatif vs Qualitatif)..."
-                                    className="w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section1.t1_1_justification}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_1_justification: e.target.value } })}
                                 />
@@ -306,13 +323,15 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div className="space-y-4">
                                 <textarea
                                     placeholder="Listez et classez les erreurs (Factuelle majeure, Détail trompeur, Omission)..."
-                                    className="w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section1.t1_2_errors}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_2_errors: e.target.value } })}
                                 />
                                 <textarea
                                     placeholder="Réécrivez le texte corrigé..."
-                                    className="w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section1.t1_2_rewrite}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_2_rewrite: e.target.value } })}
                                 />
@@ -330,13 +349,15 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div className="space-y-4">
                                 <p className="text-xs uppercase font-bold">Identifiez le type (Biais, Généralisation, Stéréotype) et justifiez :</p>
                                 <textarea
-                                    className="w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section1.t1_3_bias_type}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_3_bias_type: e.target.value } })}
                                 />
                                 <p className="text-xs uppercase font-bold">Version Neutre :</p>
                                 <textarea
-                                    className="w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section1.t1_3_rewrite}
                                     onChange={(e) => setResponses({ ...responses, section1: { ...responses.section1, t1_3_rewrite: e.target.value } })}
                                 />
@@ -370,7 +391,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             </div>
                             <textarea
                                 placeholder="Décrivez TOUT ce qui est visible sans aucune inférence (attention aux textes et reflets)..."
-                                className="w-full h-40 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                disabled={isReadOnly}
+                                className={`w-full h-40 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                 value={responses.section2.t2_1_description}
                                 onChange={(e) => setResponses({ ...responses, section2: { ...responses.section2, t2_1_description: e.target.value } })}
                             />
@@ -387,13 +409,15 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div className="space-y-4">
                                 <p className="text-xs font-bold uppercase tracking-widest">Transcrivez EXACTEMENT et expliquez votre choix (O vs 0) :</p>
                                 <input
-                                    className="w-full bg-background border border-neon/20 p-4 text-xl font-black text-neon"
+                                    disabled={isReadOnly}
+                                    className={`w-full bg-background border border-neon/20 p-4 text-xl font-black text-neon ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section2.t2_2_transcription}
                                     onChange={(e) => setResponses({ ...responses, section2: { ...responses.section2, t2_2_transcription: e.target.value } })}
                                 />
                                 <textarea
                                     placeholder="Justification structurée..."
-                                    className="w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section2.t2_2_choice}
                                     onChange={(e) => setResponses({ ...responses, section2: { ...responses.section2, t2_2_choice: e.target.value } })}
                                 />
@@ -436,13 +460,15 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 <p className="text-[10px] uppercase font-bold">Instructions : Classez les images et justifiez selon une hiérarchie logique.</p>
                                 <textarea
                                     placeholder="Classement : 1 > 4 > 2 > 3 (Exemple)..."
-                                    className="w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-20 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section3.t3_1_ranking}
                                     onChange={(e) => setResponses({ ...responses, section3: { ...responses.section3, t3_1_ranking: e.target.value } })}
                                 />
                                 <textarea
                                     placeholder="Justification (hiérarchie des défauts)..."
-                                    className="w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                    disabled={isReadOnly}
+                                    className={`w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                     value={responses.section3.t3_1_justification}
                                     onChange={(e) => setResponses({ ...responses, section3: { ...responses.section3, t3_1_justification: e.target.value } })}
                                 />
@@ -456,7 +482,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             </div>
                             <p className="text-[10px] opacity-60">Analysez l'image quasi-parfaite et listez TOUJS les défauts (ombres, doigts, texte corrompu, fusion d'objets).</p>
                             <textarea
-                                className="w-full h-40 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                disabled={isReadOnly}
+                                className={`w-full h-40 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                 value={responses.section3.t3_2_defects}
                                 onChange={(e) => setResponses({ ...responses, section3: { ...responses.section3, t3_2_defects: e.target.value } })}
                             />
@@ -488,7 +515,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 <div>
                                     <p className="text-xs font-bold uppercase mb-2">L’IA a-t-elle violé les guidelines ? Si oui, où précisément ?</p>
                                     <textarea
-                                        className="w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                        disabled={isReadOnly}
+                                        className={`w-full h-32 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                         value={responses.section4.t4_1_violation}
                                         onChange={(e) => setResponses({ ...responses, section4: { ...responses.section4, t4_1_violation: e.target.value } })}
                                     />
@@ -496,7 +524,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 <div>
                                     <p className="text-xs font-bold uppercase mb-2">Reformulez un refus conforme :</p>
                                     <textarea
-                                        className="w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none"
+                                        disabled={isReadOnly}
+                                        className={`w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`}
                                         value={responses.section4.t4_1_refusal}
                                         onChange={(e) => setResponses({ ...responses, section4: { ...responses.section4, t4_1_refusal: e.target.value } })}
                                     />
@@ -532,7 +561,8 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
 
                             <textarea
                                 placeholder="Tentez de produire ce contenu (ou expliquez pourquoi c'est impossible)..."
-                                className="w-full h-48 bg-background border border-neon/30 p-6 text-sm font-mono text-neon focus:shadow-[0_0_20px_rgba(34,197,94,0.1)] outline-none transition-all"
+                                disabled={isReadOnly}
+                                className={`w-full h-48 bg-background border border-neon/30 p-6 text-sm font-mono text-neon focus:shadow-[0_0_20px_rgba(34,197,94,0.1)] outline-none transition-all ${isReadOnly ? 'opacity-50' : ''}`}
                                 value={responses.section5.t5_1_poem}
                                 onChange={(e) => setResponses({ ...responses, section5: { ...responses.section5, t5_1_poem: e.target.value } })}
                             />
@@ -548,7 +578,10 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                 <Sparkles size={48} className="text-neon mx-auto mb-6 animate-pulse" />
                                 <h2 className="text-4xl font-black uppercase italic text-neon tracking-tighter mb-4">Transmission_Success</h2>
                                 <p className="text-foreground/50 text-sm max-w-md mx-auto mb-10">Vos analyses expertes ont été injectées dans le protocole de vérification. L'administrateur reviendra vers vous après évaluation RLHF.</p>
-                                <button onClick={onBack} className="bg-neon text-background px-10 py-4 font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all cursor-pointer shadow-[0_0_30px_rgba(34,197,94,0.2)]">Retour au Dashboard</button>
+                                <div className="flex justify-center gap-6">
+                                    <button onClick={onBack} className="bg-neon/10 text-neon border border-neon/20 px-6 py-4 font-black uppercase text-[10px] tracking-widest hover:bg-neon/20 transition-all cursor-pointer">Dashboard</button>
+                                    <button onClick={() => setCurrentSection(1)} className="bg-neon text-background px-10 py-4 font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all cursor-pointer shadow-[0_0_30px_rgba(34,197,94,0.2)]">Revoir mes réponses</button>
+                                </div>
                             </div>
                         ) : (
                             <div className="space-y-12">
@@ -590,18 +623,18 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Instruction Following (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_a_instruction_following || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_instruction_following: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_a_instruction_following || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_instruction_following: parseInt(e.target.value) } })} />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Factuality (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_a_factuality || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_factuality: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_a_factuality || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_factuality: parseInt(e.target.value) } })} />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Completeness (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_a_completeness || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_completeness: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_a_completeness || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_completeness: parseInt(e.target.value) } })} />
                                                 </div>
                                             </div>
-                                            <textarea placeholder="Identifiez toute inexactitude ou omission significative..." className="w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none" value={responses.exam.part1_a_issues} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_issues: e.target.value } })} />
+                                            <textarea placeholder="Identifiez toute inexactitude ou omission significative..." disabled={isReadOnly} className={`w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_a_issues} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_a_issues: e.target.value } })} />
                                         </div>
 
                                         {/* Response B */}
@@ -618,18 +651,18 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Instruction Following (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_b_instruction_following || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_instruction_following: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_b_instruction_following || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_instruction_following: parseInt(e.target.value) } })} />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Factuality (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_b_factuality || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_factuality: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_b_factuality || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_factuality: parseInt(e.target.value) } })} />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <label className="text-[8px] uppercase font-bold opacity-50 italic">Completeness (1-5)</label>
-                                                    <input type="number" min="1" max="5" className="w-full bg-background border border-neon/10 p-2 text-xs text-neon" value={responses.exam.part1_b_completeness || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_completeness: parseInt(e.target.value) } })} />
+                                                    <input type="number" min="1" max="5" disabled={isReadOnly} className={`w-full bg-background border border-neon/10 p-2 text-xs text-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_b_completeness || ''} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_completeness: parseInt(e.target.value) } })} />
                                                 </div>
                                             </div>
-                                            <textarea placeholder="Analysez les erreurs factuelles (regardez bien les chiffres)..." className="w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none" value={responses.exam.part1_b_issues} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_issues: e.target.value } })} />
+                                            <textarea placeholder="Analysez les erreurs factuelles (regardez bien les chiffres)..." disabled={isReadOnly} className={`w-full h-24 bg-background border border-neon/10 p-4 text-xs text-foreground focus:border-neon outline-none ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part1_b_issues} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part1_b_issues: e.target.value } })} />
                                         </div>
                                     </div>
 
@@ -641,12 +674,12 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                                             <p className="text-xs uppercase font-bold">Likert Preference Score (1 = A largement meilleure, 7 = B largement meilleure)</p>
                                             <div className="flex gap-4 items-center">
                                                 <span className="text-[10px] text-neon font-black">1 [A_MAX]</span>
-                                                <input type="range" min="1" max="7" className="w-64 accent-neon" value={responses.exam.part2_likert} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part2_likert: parseInt(e.target.value) } })} />
+                                                <input type="range" min="1" max="7" disabled={isReadOnly} className={`w-64 accent-neon ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part2_likert} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part2_likert: parseInt(e.target.value) } })} />
                                                 <span className="text-[10px] text-neon font-black">7 [B_MAX]</span>
                                             </div>
                                         </div>
 
-                                        <textarea placeholder="JUSTIFICATION FINALE (Les différences majeures, l'impact des erreurs, hiérarchisation des défauts)..." className="w-full h-40 bg-background border border-neon p-6 text-sm font-bold text-foreground outline-none shadow-inner" value={responses.exam.part2_justification} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part2_justification: e.target.value } })} />
+                                        <textarea placeholder="JUSTIFICATION FINALE (Les différences majeures, l'impact des erreurs, hiérarchisation des défauts)..." disabled={isReadOnly} className={`w-full h-40 bg-background border border-neon p-6 text-sm font-bold text-foreground outline-none shadow-inner ${isReadOnly ? 'opacity-50' : ''}`} value={responses.exam.part2_justification} onChange={e => setResponses({ ...responses, exam: { ...responses.exam, part2_justification: e.target.value } })} />
                                     </div>
                                 </div>
 
@@ -682,7 +715,7 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
             </div>
 
             {/* Navigation Buttons */}
-            {currentSection < 6 && (
+            {(currentSection < 6 || isReadOnly) && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-black/60 backdrop-blur-xl border border-neon/20 px-10 py-4 rounded-full shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-10">
                     <button
                         onClick={() => { setCurrentSection(s => s - 1); window.scrollTo(0, 0); }}
@@ -696,12 +729,21 @@ export default function DataAnnotationModule({ userId, onBack, onComplete }: Dat
                             <div key={i} className={`h-1.5 w-1.5 rounded-full ${i === currentSection ? 'bg-neon shadow-[0_0_10px_#22c55e]' : 'bg-neon/20'}`} />
                         ))}
                     </div>
-                    <button
-                        onClick={handleNext}
-                        className="text-[9px] uppercase font-black tracking-widest text-neon hover:underline cursor-pointer"
-                    >
-                        {currentSection === 5 ? '[ VERS_EXAMEN ]' : '[ SUIVANT ]'}
-                    </button>
+                    {currentSection < 6 ? (
+                        <button
+                            onClick={handleNext}
+                            className="text-[9px] uppercase font-black tracking-widest text-neon hover:underline cursor-pointer"
+                        >
+                            {currentSection === 5 ? '[ VERS_EXAMEN ]' : '[ SUIVANT ]'}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => { setCurrentSection(1); window.scrollTo(0, 0); }}
+                            className="text-[9px] uppercase font-black tracking-widest text-neon opacity-40 hover:opacity-100 hover:underline cursor-pointer"
+                        >
+                            [ REPASSER_AU_DÉBUT ]
+                        </button>
+                    )}
                 </div>
             )}
         </div>
