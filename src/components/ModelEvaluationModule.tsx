@@ -25,25 +25,26 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                 content: "Objet : Remerciements pour l'entretien du poste de consultante junior\n\nChère Mathilde,\n\nJe tenais à vous remercier sincèrement pour l'entretien d'hier concernant le poste de consultante junior au sein de votre cabinet. J'ai beaucoup apprécié notre échange et la manière dont vous avez présenté l'équipe et les projets en cours. Vous avez su me mettre à l'aise et m'offrir une perspective très éclairante sur le rôle, ce qui a renforcé mon intérêt pour la position.\n\nJ'ai particulièrement apprécié vos conseils sur les compétences à développer et sur l'importance de l'ouverture d'esprit dans ce type de conseil. Votre approche bienveillante et votre ouverture d'esprit m'ont inspirée et m'ont motivée à apporter le meilleur de moi-même.\n\nBien que je ne sois pas encore à 100 % convaincue, je reste très intéressée par l'idée de collaborer avec vous et d'apprendre au sein de votre équipe dynamique. Je serais honorée de pouvoir contribuer à vos projets et de participer à l'évolution de votre cabinet.\n\nJe vous remercie encore pour votre temps et votre disponibilité. N'hésitez pas à me recontacter si vous avez besoin de plus d'informations ou d'exemples de mon travail.\n\nDans l'attente de votre retour, je vous souhaite une excellente journée.\n\nCordialement,\n[Votre prénom et nom]\n[Votre LinkedIn (si applicable)]\n[Votre numéro de téléphone]"
             },
             gradingA: {
-                localisation: 0,
-                instructionFollowing: 0,
-                truthfulness: 0,
-                length: 0,
-                structure: 0,
-                styleTone: 0,
-                harmfulness: 0,
+                localisation: 0, localisationComment: '',
+                instructionFollowing: 0, instructionFollowingComment: '',
+                truthfulness: 0, truthfulnessComment: '',
+                length: 0, lengthComment: '',
+                structure: 0, structureComment: '',
+                styleTone: 0, styleToneComment: '',
+                harmfulness: 0, harmfulnessComment: '',
                 overall: 0
             },
             gradingB: {
-                localisation: 0,
-                instructionFollowing: 0,
-                truthfulness: 0,
-                length: 0,
-                structure: 0,
-                styleTone: 0,
-                harmfulness: 0,
+                localisation: 0, localisationComment: '',
+                instructionFollowing: 0, instructionFollowingComment: '',
+                truthfulness: 0, truthfulnessComment: '',
+                length: 0, lengthComment: '',
+                structure: 0, structureComment: '',
+                styleTone: 0, styleToneComment: '',
+                harmfulness: 0, harmfulnessComment: '',
                 overall: 0
-            }
+            },
+            preferenceRanking: '' as string
         },
         section2: {
             exo2a: {
@@ -66,8 +67,9 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [saveStatus, setSaveStatus] = useState<string>('idle');
     const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
-    const [activeChapterId, setActiveChapterId] = useState<number>(0);
-    const [activeModuleId, setActiveModuleId] = useState<number>(0);
+    // Initialize with known fallback IDs so persistence works immediately on mount
+    const [activeChapterId, setActiveChapterId] = useState<number>(21);
+    const [activeModuleId, setActiveModuleId] = useState<number>(6);
 
     // Audio states
     const [isRecordingEn, setIsRecordingEn] = useState(false);
@@ -328,35 +330,54 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                                             <div className="text-[11px] leading-relaxed whitespace-pre-wrap opacity-90">{content}</div>
                                         </div>
 
-                                        <div className="bg-black/20 border border-neon/10 p-6 space-y-4">
+                                        <div className="bg-black/20 border border-neon/10 p-6 space-y-6">
                                             <p className="text-[10px] font-black uppercase text-neon/60 tracking-widest">Grille de notation (1-5)</p>
-                                            {criteria.map(c => (
-                                                <div key={c.key} className="flex justify-between items-center group">
-                                                    <span className="text-[10px] opacity-70 group-hover:opacity-100 transition-opacity">{c.label}</span>
-                                                    <div className="flex gap-1">
-                                                        {[1, 2, 3, 4, 5].map(v => (
-                                                            <button
-                                                                key={v}
-                                                                onClick={() => {
-                                                                    setResponses(prev => ({
-                                                                        ...prev,
-                                                                        section1: {
-                                                                            ...prev.section1,
-                                                                            [modKey]: { ...prev.section1[modKey as 'gradingA' | 'gradingB'], [c.key]: v }
-                                                                        }
-                                                                    }));
-                                                                }}
-                                                                className={`w-6 h-6 text-[10px] font-bold transition-all border ${(responses.section1[modKey as 'gradingA' | 'gradingB'] as any)[c.key] === v
-                                                                    ? 'bg-neon text-background border-neon shadow-[0_0_10px_rgba(34,197,94,0.4)]'
-                                                                    : 'text-neon/40 border-neon/10 hover:border-neon/40'
-                                                                    }`}
-                                                            >
-                                                                {v}
-                                                            </button>
-                                                        ))}
+                                            {criteria.map(c => {
+                                                const commentKey = `${c.key}Comment` as string;
+                                                const grading = responses.section1[modKey as 'gradingA' | 'gradingB'] as any;
+                                                return (
+                                                    <div key={c.key} className="space-y-2 pb-4 border-b border-neon/5 last:border-0">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-[10px] font-bold opacity-80">{c.label}</span>
+                                                            <div className="flex gap-1">
+                                                                {[1, 2, 3, 4, 5].map(v => (
+                                                                    <button
+                                                                        key={v}
+                                                                        onClick={() => {
+                                                                            setResponses(prev => ({
+                                                                                ...prev,
+                                                                                section1: {
+                                                                                    ...prev.section1,
+                                                                                    [modKey]: { ...prev.section1[modKey as 'gradingA' | 'gradingB'], [c.key]: v }
+                                                                                }
+                                                                            }));
+                                                                        }}
+                                                                        className={`w-6 h-6 text-[10px] font-bold transition-all border ${grading[c.key] === v
+                                                                            ? 'bg-neon text-background border-neon shadow-[0_0_10px_rgba(34,197,94,0.4)]'
+                                                                            : 'text-neon/40 border-neon/10 hover:border-neon/40'
+                                                                            }`}
+                                                                    >
+                                                                        {v}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <input
+                                                            type="text"
+                                                            placeholder={`Commentaire sur ${c.label.split(' ')[0]}...`}
+                                                            value={grading[commentKey] || ''}
+                                                            onChange={e => setResponses(prev => ({
+                                                                ...prev,
+                                                                section1: {
+                                                                    ...prev.section1,
+                                                                    [modKey]: { ...prev.section1[modKey as 'gradingA' | 'gradingB'], [commentKey]: e.target.value }
+                                                                }
+                                                            }))}
+                                                            className="w-full bg-black/30 border border-neon/10 px-3 py-1.5 text-[10px] font-mono text-foreground/80 focus:border-neon/40 outline-none placeholder:opacity-30"
+                                                        />
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                             <div className="pt-4 border-t border-neon/10 flex justify-between items-center">
                                                 <span className="text-xs font-black uppercase text-neon">OVERALL_SCORE</span>
                                                 <div className="flex gap-1">
@@ -387,8 +408,42 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                                 );
                             })}
                         </div>
+
+                        {/* Preference Ranking */}
+                        <div className="mt-10 p-8 bg-card-bg border border-neon/30 space-y-6">
+                            <div>
+                                <h3 className="text-neon font-black uppercase text-sm tracking-widest mb-1">Preference Ranking</h3>
+                                <p className="text-[10px] opacity-50">En tenant compte de l'ensemble des critères, quelle réponse préférez-vous globalement ?</p>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {[
+                                    { value: 'much_better_a', label: 'A is Much Better' },
+                                    { value: 'better_a', label: 'A is Better' },
+                                    { value: 'slightly_better_a', label: 'A is Slightly Better' },
+                                    { value: 'no_preference', label: 'No Preference' },
+                                    { value: 'slightly_better_b', label: 'B is Slightly Better' },
+                                    { value: 'better_b', label: 'B is Better' },
+                                    { value: 'much_better_b', label: 'B is Much Better' },
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setResponses(prev => ({
+                                            ...prev,
+                                            section1: { ...prev.section1, preferenceRanking: opt.value }
+                                        }))}
+                                        className={`py-3 px-4 text-[10px] font-black uppercase tracking-wider border transition-all ${responses.section1.preferenceRanking === opt.value
+                                                ? 'bg-neon text-background border-neon shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                                : 'bg-neon/5 text-neon/60 border-neon/20 hover:border-neon/50 hover:text-neon'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
+
 
                 {/* SECTION 2: LOCALIZATION */}
                 {currentSection === 2 && (
