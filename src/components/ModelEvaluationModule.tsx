@@ -15,14 +15,14 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
     const [currentSection, setCurrentSection] = useState(1);
     const [responses, setResponses] = useState({
         section1: {
-            prompt: "Je viens de terminer un entretien pour un post de consultante junior...",
+            prompt: "Je viens de terminer un entretien pour un post de consultante junior dans un grand cabinet de conseil en stratégie. J'ai vraiment apprécié l'entretien avec la manager Mathilde qui a été très bienveillante et m'a mise à l'aise. Je voudrais la remercier pour ses conseils et son ouverture d'esprit et redire que j'aimerais beaucoup travailler avec elle sans être trop insistante.\n\nAide-moi à rédiger un court mail de 300 mots au plus pour la remercier.",
             responseA: {
                 title: "Modèle A",
-                content: "Objet : Remerciements pour l'entretien du poste de consultante junior\n\nChère Mathilde,\n\nJe tenais à vous remercier sincèrement pour l'entretien d'hier..."
+                content: "Objet : Remerciements pour l'entretien du poste de consultante junior\n\nChère Mathilde,\n\nJe tenais à vous remercier sincèrement pour l'entretien d'hier concernant le poste de consultante junior au sein de votre cabinet. J'ai beaucoup apprécié notre échange et la bienveillance dont vous avez fait preuve. Vous m'avez permis de me sentir à l'aise et d'en apprendre davantage sur les enjeux passionnants que porte votre équipe en stratégie.\n\nJe suis particulièrement touchée par vos conseils sur l'importance de développer une pensée critique et d'agir avec agilité. Ces éléments résonnent profondément avec mes valeurs et mon approche professionnelle. Votre ouverture d'esprit sur les différentes perspectives a été inspirante et m'a encouragée à envisager les défis sous un angle renouvelé.\n\nBien que l'idée de collaborer avec vous et votre équipe soit très attractive, je souhaite exprimer ma décision sans insistance. Je tiens simplement à vous remercier encore une fois pour cette opportunité et pour avoir partagé votre vision. Je reste pleinement ouverte à d'éventuelles opportunités à l'avenir et espère que nos chemins se croiseront de nouveau.\n\nJe vous souhaite et à votre équipe une excellente continuation de votre travail. Je vous remercie à nouveau pour votre temps et votre disponibilité.\n\nAvec toute ma considération,\n[Votre Prénom et Nom]\n[Votre LinkedIn (si applicable)]\n[Votre Numéro de Téléphone]"
             },
             responseB: {
                 title: "Modèle B",
-                content: "Objet : Remerciements pour l'entretien du poste de consultante junior\n\nChère Mathilde,\n\nJe tenais à vous remercier sincèrement pour l'entretien d'hier..."
+                content: "Objet : Remerciements pour l'entretien du poste de consultante junior\n\nChère Mathilde,\n\nJe tenais à vous remercier sincèrement pour l'entretien d'hier concernant le poste de consultante junior au sein de votre cabinet. J'ai beaucoup apprécié notre échange et la manière dont vous avez présenté l'équipe et les projets en cours. Vous avez su me mettre à l'aise et m'offrir une perspective très éclairante sur le rôle, ce qui a renforcé mon intérêt pour la position.\n\nJ'ai particulièrement apprécié vos conseils sur les compétences à développer et sur l'importance de l'ouverture d'esprit dans ce type de conseil. Votre approche bienveillante et votre ouverture d'esprit m'ont inspirée et m'ont motivée à apporter le meilleur de moi-même.\n\nBien que je ne sois pas encore à 100 % convaincue, je reste très intéressée par l'idée de collaborer avec vous et d'apprendre au sein de votre équipe dynamique. Je serais honorée de pouvoir contribuer à vos projets et de participer à l'évolution de votre cabinet.\n\nJe vous remercie encore pour votre temps et votre disponibilité. N'hésitez pas à me recontacter si vous avez besoin de plus d'informations ou d'exemples de mon travail.\n\nDans l'attente de votre retour, je vous souhaite une excellente journée.\n\nCordialement,\n[Votre prénom et nom]\n[Votre LinkedIn (si applicable)]\n[Votre numéro de téléphone]"
             },
             gradingA: {
                 localisation: 0,
@@ -94,7 +94,11 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
         }
     }, []);
 
-    // RESOLVE ID
+    // KNOWN FALLBACK IDs for module-evaluation (module_id=6, chapter_id=21)
+    const FALLBACK_MODULE_ID = 6;
+    const FALLBACK_CHAPTER_ID = 21;
+
+    // RESOLVE ID — with fallback to known IDs
     useEffect(() => {
         async function resolveIDs() {
             try {
@@ -117,21 +121,23 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
 
                     if (chapterData) {
                         setActiveChapterId(chapterData.id);
-                        // loadSavedProgress will be triggered by the useEffect below
-                        return; // exit early — loading will be cleared by loadSavedProgress
+                        return; // useEffect below will trigger loadSavedProgress
                     }
                 }
-                // No module or no chapter found — still allow the component to render
-                setIsInitialLoading(false);
+                // Fallback to hardcoded IDs if slug lookup fails
+                console.warn("ModelEval: slug lookup failed, using fallback IDs");
+                setActiveModuleId(FALLBACK_MODULE_ID);
+                setActiveChapterId(FALLBACK_CHAPTER_ID);
             } catch (err) {
                 console.error("Error resolving ids:", err);
-                setIsInitialLoading(false);
+                setActiveModuleId(FALLBACK_MODULE_ID);
+                setActiveChapterId(FALLBACK_CHAPTER_ID);
             }
         }
         resolveIDs();
     }, []);
 
-    // AUTOSAVE
+    // AUTOSAVE — every 2 seconds after a change
     useEffect(() => {
         if (isInitialLoading || !userId || !activeChapterId) return;
         const timer = setTimeout(async () => {
@@ -144,7 +150,7 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                 console.error("Autosave error:", err);
                 setSaveStatus('Error');
             }
-        }, 5000);
+        }, 2000); // Reduced from 5s to 2s for better UX
         return () => clearTimeout(timer);
     }, [responses, currentSection, userId, isInitialLoading, activeChapterId]);
 
@@ -155,7 +161,20 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
             const savedData = await getActivityProgress(userId, chapId);
             if (savedData) {
                 if (savedData.step) setCurrentSection(savedData.step);
-                if (savedData.responses) setResponses(savedData.responses);
+                if (savedData.responses) {
+                    // Deep merge to preserve static fields (prompt, responseA, responseB)
+                    setResponses(prev => ({
+                        ...prev,
+                        ...savedData.responses,
+                        section1: {
+                            ...prev.section1, // keep full static prompt/responses
+                            ...savedData.responses.section1,
+                            prompt: prev.section1.prompt,
+                            responseA: prev.section1.responseA,
+                            responseB: prev.section1.responseB,
+                        }
+                    }));
+                }
             }
         } catch (err) {
             console.error("Error loading progress:", err);
@@ -510,29 +529,29 @@ export default function ModelEvaluationModule({ userId, onBack, onComplete }: Mo
                 )}
             </div>
 
-            {/* Navigation Buttons */}
-            {currentSection < 3 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-black/60 backdrop-blur-xl border border-neon/20 px-10 py-4 rounded-full shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-10">
-                    <button
-                        onClick={() => { setCurrentSection(s => s - 1); window.scrollTo(0, 0); }}
-                        disabled={currentSection === 1}
-                        className={`text-[9px] uppercase font-black tracking-widest ${currentSection === 1 ? 'opacity-20 cursor-not-allowed' : 'text-neon hover:underline cursor-pointer'}`}
-                    >
-                        [ PRÉCEDENT ]
-                    </button>
-                    <div className="flex gap-2">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1.5 w-1.5 rounded-full ${i === currentSection ? 'bg-neon shadow-[0_0_10px_#22c55e]' : 'bg-neon/20'}`} />
-                        ))}
-                    </div>
+            {/* Navigation Buttons — visible on all sections */}
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-10 bg-black/60 backdrop-blur-xl border border-neon/20 px-10 py-4 rounded-full shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-10">
+                <button
+                    onClick={() => { setCurrentSection(s => Math.max(1, s - 1)); window.scrollTo(0, 0); }}
+                    disabled={currentSection === 1}
+                    className={`text-[9px] uppercase font-black tracking-widest ${currentSection === 1 ? 'opacity-20 cursor-not-allowed' : 'text-neon hover:underline cursor-pointer'}`}
+                >
+                    [ PRÉCÉDENT ]
+                </button>
+                <div className="flex gap-2">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className={`h-1.5 w-1.5 rounded-full ${i === currentSection ? 'bg-neon shadow-[0_0_10px_#22c55e]' : 'bg-neon/20'}`} />
+                    ))}
+                </div>
+                {currentSection < 3 && (
                     <button
                         onClick={handleNext}
                         className="text-[9px] uppercase font-black tracking-widest text-neon hover:underline cursor-pointer"
                     >
                         {currentSection === 2 ? '[ VERS_AUDIO ]' : '[ SUIVANT ]'}
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 }
